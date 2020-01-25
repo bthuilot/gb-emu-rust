@@ -1,4 +1,5 @@
-use GameboyEmulator::z80::Z80;
+use GameboyEmulator::CPU;
+use GameboyEmulator::Memory;
 
 fn main() {
     let r1: u8 = 250;

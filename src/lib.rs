@@ -1,4 +1,4 @@
 mod cpu;
-mod mmu;
-pub use crate::cpu::z80;
-pub use crate::mmu as MMU;
+mod memory;
+pub use crate::cpu::cpu as CPU;
+pub use crate::memory::mmu as Memory;
