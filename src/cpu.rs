@@ -113,7 +113,7 @@ pub mod cpu {
         }
 
         pub fn dispatcher(&mut self) {
-            while (true)
+            loop
                 {
                     let op = self.mmu.rb(self.registers.pc, self.registers.pc);              // Fetch instruction
                     self.registers.pc.wrapping_add(1);

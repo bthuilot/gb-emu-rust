@@ -27,9 +27,9 @@ pub mod mmu {
         inbios: bool,
         bios: [u8; 0],
         rom: Vec<u8>,
-        wram: [u8; 8191],
-        eram: [u8; 8191],
-        zram: [u8; 0],
+        wram: [u8; 8192],
+        eram: [u8; 8192],
+        zram: [u8; 127],
 
     }
 
@@ -118,13 +118,87 @@ pub mod mmu {
             }
         }
         pub fn wb(&mut self, addr: MemoryAddr, value: u8) {
+            match addr&0xF000 {
+                // ROM bank 0
+                0x0000 => {
+                    if self.inbios && addr < 0x0100 {
+                        return;
+                    }
+                }
+                // fall through
+                0x1000 | 0x2000 | 0x3000 => {
+                    return;
+                }
 
+                // ROM bank 1
+                 0x4000 | 0x5000 |0x6000 | 0x7000 => {
+                     return;
+                 }
+
+                // VRAM
+                0x8000 | 0x9000 => {
+                    GPU._vram[addr & 0x1FFF] = val;
+                    GPU.updatetile(addr & 0x1FFF, val);
+                    return;
+                }
+
+                // External RAM
+                0xA000 |  0xB000 => {
+                    self.eram[addr & 0x1FFF] = val;
+                }
+
+                // Work RAM and echo
+                0xC000 | 0xD000 | 0xE000 => {
+                    self.wram[addr & 0x1FFF] = val;
+                }
+
+                // Everything else
+                 0xF000 => {
+                     match addr & 0x0F00 {
+                         // Echo RAM
+                         0x000| 0x100| 0x200| 0x300 |
+                         0x400| 0x500| 0x600| 0x700 |
+                         0x800| 0x900| 0xA00| 0xB00 |
+                         0xC00| 0xD00 => {
+                             self.wram[addr & 0x1FFF] = val;
+                             return;
+                         }
+
+                         // OAM
+                          0xE00 => {
+                              if ((addr & 0xFF) < 0xA0) {
+                                  GPU._oam[addr & 0xFF] = val;
+                              }
+                              GPU.updateoam(addr, val);
+                              return;
+                          }
+
+                         // Zeropage RAM, I/O
+                         0xF00 => {
+                             if addr > 0xFF7F {
+                                 self.zram[addr & 0x7F] = val;
+                             } else {
+//                                 switch(addr & 0xF0)
+                                 return;
+                             }
+                         }
+                         _ => {
+                             return;
+                         }
+                     }
+                     return;
+                 }
+                _ => {
+                    return;
+                }
+            }
         }
         pub fn rw(&mut self, addr: MemoryAddr, pc: u16) -> u16{
             return (self.rb(addr,pc) as u16) + (self.rb(addr+1, pc) as u16) << 8;
         }
         pub fn ww(&mut self, addr: MemoryAddr, value: u16) {
-
+            self.wb(addr, (value&255) as u8);
+            self.wb(addr+1, (value >> 8) as u8);
         }
 
         pub fn load_file(&mut self, filename: &str) {
