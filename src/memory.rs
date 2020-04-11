@@ -25,7 +25,7 @@ pub mod mmu {
     pub type MemoryAddr = u16;
     pub struct MMU {
         inbios: bool,
-        bios: [u8; 0],
+//        bios: [u8; 0],
         rom: Vec<u8>,
         wram: [u8; 8192],
         eram: [u8; 8192],
@@ -40,7 +40,7 @@ pub mod mmu {
                 0x0000 => {
                     if self.inbios {
                         if addr < 0x0100 {
-                            return self.bios[addr as usize];
+                            return BIOS[addr as usize];
                         } else if pc == 0x0100 {
                             self.inbios = false;
                         }
@@ -137,19 +137,19 @@ pub mod mmu {
 
                 // VRAM
                 0x8000 | 0x9000 => {
-                    GPU._vram[addr & 0x1FFF] = val;
-                    GPU.updatetile(addr & 0x1FFF, val);
+//                    GPU._vram[addr & 0x1FFF] = val;
+//                    GPU.updatetile(addr & 0x1FFF, val);
                     return;
                 }
 
                 // External RAM
                 0xA000 |  0xB000 => {
-                    self.eram[addr & 0x1FFF] = val;
+                    self.eram[(addr & 0x1FFF) as usize] = value;
                 }
 
                 // Work RAM and echo
                 0xC000 | 0xD000 | 0xE000 => {
-                    self.wram[addr & 0x1FFF] = val;
+                    self.wram[(addr & 0x1FFF) as usize] = value;
                 }
 
                 // Everything else
@@ -160,23 +160,23 @@ pub mod mmu {
                          0x400| 0x500| 0x600| 0x700 |
                          0x800| 0x900| 0xA00| 0xB00 |
                          0xC00| 0xD00 => {
-                             self.wram[addr & 0x1FFF] = val;
+                             self.wram[(addr & 0x1FFF) as usize] = value;
                              return;
                          }
 
                          // OAM
                           0xE00 => {
                               if ((addr & 0xFF) < 0xA0) {
-                                  GPU._oam[addr & 0xFF] = val;
+//                                  GPU._oam[addr & 0xFF] = val;
                               }
-                              GPU.updateoam(addr, val);
+//                              GPU.updateoam(addr, val);
                               return;
                           }
 
                          // Zeropage RAM, I/O
                          0xF00 => {
                              if addr > 0xFF7F {
-                                 self.zram[addr & 0x7F] = val;
+                                 self.zram[(addr & 0x7F) as usize] = value;
                              } else {
 //                                 switch(addr & 0xF0)
                                  return;

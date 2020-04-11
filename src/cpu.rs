@@ -3,6 +3,7 @@ use crate::memory::mmu::MemoryAddr;
 pub mod cpu {
     use std::ops::Add;
     use crate::memory::mmu::{MMU, MemoryAddr};
+    use crate::ops::ops::find_op;
 
     pub struct Clock {
         m: i32,
@@ -124,7 +125,7 @@ pub mod cpu {
         }
 
         pub fn find_op(&mut self, code: u8) {
-
+            find_op(self, code);
         }
     }
 }
