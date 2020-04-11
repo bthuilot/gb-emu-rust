@@ -25,12 +25,12 @@ pub mod cpu {
         pub t: i32,
     }
 
-
-
     pub struct Z80 {
         pub clock: Clock,
         pub registers: Registers,
         pub mmu: MMU,
+        pub halt: u8,
+        pub stop: u8,
     }
 
     impl Z80 {
@@ -111,6 +111,8 @@ pub mod cpu {
             self.registers.pc = 0;
             self.registers.m = 0;
             self.registers.t = 0;
+            self.halt = 0;
+            self.stop = 0;
         }
 
         pub fn dispatcher(&mut self) {

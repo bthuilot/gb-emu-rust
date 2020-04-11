@@ -202,7 +202,7 @@ pub mod ops {
                 cpu.registers.m=1;
             }
             32 => {
-                let i= cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                let mut i= cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
                 if i>127 {
                     i = ((!i + 1)&255);
                     // TODO fix
@@ -263,7 +263,7 @@ pub mod ops {
                 cpu.registers.m=1;
             }
             40 => {
-                let i=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                let mut i=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
                 if i>127 {
                     i= ((!i+1)&255);
                     // TODO fix this
@@ -323,7 +323,7 @@ pub mod ops {
                 cpu.registers.m=1;
             }
             48 => {
-                let i=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                let mut  i=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
                 if(i>127) {
                     i= ((!i+1)&255);
                     // TODO FIX
@@ -353,392 +353,358 @@ pub mod ops {
                 cpu.registers.m=1;
             }
             52 => {
-                let i=cpu.mmu.rb((cpu.registers.h<<8)+cpu.registers.l)+1; i&=255; cpu.mmu.wb((cpu.registers.h<<8)+cpu.registers.l,i); cpu.registers.f=i?0:0x80; cpu.registers.m=3;
+                let i = cpu.mmu.rb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l as u16), cpu.registers.pc).wrapping_add(1);
+                cpu.mmu.wb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l as u16),i);
+                cpu.registers.f= if i != 0 {0} else {0x80};
+                cpu.registers.m=3;
             }
-
             53 => {
-
-                let i=cpu.mmu.rb((cpu.registers.h<<8)+cpu.registers.l)-1; i&=255; cpu.mmu.wb((cpu.registers.h<<8)+cpu.registers.l,i); cpu.registers.f=i?0:0x80; cpu.registers.m=3;
+                let i=cpu.mmu.rb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l as u16), cpu.registers.pc).wrapping_sub(1);
+                cpu.mmu.wb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l as u16),i);
+                cpu.registers.f=if i != 0 {0} else {0x80};
+                cpu.registers.m=3;
             }
-
             54 => {
-
-                cpu.mmu.wb((cpu.registers.h<<8)+cpu.registers.l, cpu.mmu.rb(cpu.registers.pc)); cpu.registers.pc+=1; cpu.registers.m=3;
+                cpu.mmu.wb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l), cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc));
+                cpu.registers.pc = cpu.registers.pc.wrapping_add(1);
+                cpu.registers.m=3;
             }
-
             55 => {
-
-                cpu.registers.f|=0x10; cpu.registers.m=1;
+                cpu.registers.f|=0x10;
+                cpu.registers.m=1;
             }
-
             56 => {
-
-                let i=cpu.mmu.rb(cpu.registers.pc); if(i>127) i=-((~i+1)&255); cpu.registers.pc+=1; cpu.registers.m=2; if((cpu.registers.f&0x10)==0x10) { cpu.registers.pc+=i; cpu.registers.m+=1; }
+                let mut i=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                if i>127 {
+                    i=(i+1)&255;
+                }
+                cpu.registers.pc = cpu.registers.pc.wrapping_add(1);
+                cpu.registers.m=2;
+                if (cpu.registers.f&0x10)==0x10 {
+                    cpu.registers.pc = cpu.registers.pc.wrapping_add(i);
+                    cpu.registers.m = cpu.register.m.wrapping_add(1);
+                }
             }
-
             57 => {
-
-                let hl=(cpu.registers.h<<8)+cpu.registers.l; hl+=cpu.registers.sp; if(hl>65535) cpu.registers.f|=0x10; else cpu.registers.f&=0xEF; cpu.registers.h=(hl>>8)&255; cpu.registers.l=hl&255; cpu.registers.m=3;
+                let hl=(cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l);
+                hl = hl.wrapping_add(cpu.registers.sp);
+                if hl>65535 {
+                    cpu.registers.f|=0x10;
+                } else {
+                    cpu.registers.f&=0xEF;
+                }
+                cpu.registers.h=hl.wrapping_shr(8) as u8;
+                cpu.registers.l=hl as u8;
+                cpu.registers.m=3;
             }
-
             58 => {
-
-                cpu.registers.a=cpu.mmu.rb((cpu.registers.h<<8)+cpu.registers.l); cpu.registers.l=(cpu.registers.l-1)&255; if(cpu.registers.l==255) cpu.registers.h=(cpu.registers.h-1)&255; cpu.registers.m=2;
+                cpu.registers.a=cpu.mmu.rb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l), cpu.registers.pc);
+                cpu.registers.l=cpu.registers.l.wrapping_sub(1);
+                if cpu.registers.l == 255  {
+                    cpu.registers.h=cpu.registers.h.wrapping_sub(1);
+                }
+                cpu.registers.m=2;
             }
-
             59 => {
-
-                cpu.registers.sp=(cpu.registers.sp-1)&65535; cpu.registers.m=1;
+                cpu.registers.sp= cpu.registers.sp.warpping_sub(1);
+                cpu.registers.m=1;
             }
-
             60 => {
-
-                cpu.registers.a+=1; cpu.registers.a&=255; cpu.registers.f=cpu.registers.a?0:0x80; cpu.registers.m=1;
+                cpu.registers.a = cpu.register.a.wrapping_add(1);
+                cpu.registers.f = if cpu.registers.a != 0 {0} else {0x80};
+                cpu.registers.m=1;
             }
-
             61 => {
-
-                cpu.registers.a-=1; cpu.registers.a&=255; cpu.registers.f=cpu.registers.a?0:0x80; cpu.registers.m=1;
+                cpu.registers.a = cpu.registers.a.wrapping_sub(1);
+                cpu.registers.f = if cpu.registers.a != 0 {0} else {0x80};
+                cpu.registers.m = 1;
             }
-
             62 => {
-
-                cpu.registers.a=cpu.mmu.rb(cpu.registers.pc); cpu.registers.pc+=1; cpu.registers.m=2;
+                cpu.registers.a=cpu.mmu.rb(cpu.registers.pc, cpu.register.pc);
+                cpu.registers.pc = cpu.regisers.pc.wrapping_add(1);
+                cpu.registers.m=2;
             }
-
             63 => {
-
-                let ci=cpu.registers.f&0x10?0:0x10; cpu.registers.f=(cpu.registers.f&0xEF)+ci; cpu.registers.m=1;
+                let ci= if cpu.registers.f&0x10 != 0 {0} else {0x10};
+                cpu.registers.f=(cpu.registers.f&0xEF).wrapping_add(ci);
+                cpu.registers.m=1;
             }
-
             64 => {
-
-                cpu.registers.b=cpu.registers.b; cpu.registers.m=1;
+                cpu.registers.b=cpu.registers.b;
+                cpu.registers.m=1;
             }
-
             65 => {
-
-                cpu.registers.b=cpu.registers.c; cpu.registers.m=1;
+                cpu.registers.b=cpu.registers.c;
+                cpu.registers.m=1;
             }
-
             66 => {
-
-                cpu.registers.b=cpu.registers.d; cpu.registers.m=1;
+                cpu.registers.b=cpu.registers.d;
+                cpu.registers.m=1;
             }
-
             67 => {
-
-                cpu.registers.b=cpu.registers.e; cpu.registers.m=1;
+                cpu.registers.b=cpu.registers.e;
+                cpu.registers.m=1;
             }
-
             68 => {
-
-                cpu.registers.b=cpu.registers.h; cpu.registers.m=1;
+                cpu.registers.b=cpu.registers.h;
+                cpu.registers.m=1;
             }
-
             69 => {
-
-                cpu.registers.b=cpu.registers.l; cpu.registers.m=1;
+                cpu.registers.b=cpu.registers.l;
+                cpu.registers.m=1;
             }
-
             70 => {
-
-                cpu.registers.b=cpu.mmu.rb((cpu.registers.h<<8)+cpu.registers.l); cpu.registers.m=2;
+                cpu.registers.b=cpu.mmu.rb((cpu.registers.h as u16).wrapping_shl(8).warpping_add(cpu.registers.l), cpu.registers.pc);
+                cpu.registers.m=2;
             }
-
             71 => {
-
-                cpu.registers.b=cpu.registers.a; cpu.registers.m=1;
+                cpu.registers.b=cpu.registers.a;
+                cpu.registers.m=1;
             }
-
             72 => {
-
-                cpu.registers.c=cpu.registers.b; cpu.registers.m=1;
+                cpu.registers.c=cpu.registers.b;
+                cpu.registers.m=1;
             }
-
             73 => {
-
-                cpu.registers.c=cpu.registers.c; cpu.registers.m=1;
+                cpu.registers.c=cpu.registers.c;
+                cpu.registers.m=1;
             }
-
             74 => {
-
-                cpu.registers.c=cpu.registers.d; cpu.registers.m=1;
+                cpu.registers.c=cpu.registers.d;
+                cpu.registers.m=1;
             }
-
             75 => {
-
-                cpu.registers.c=cpu.registers.e; cpu.registers.m=1;
+                cpu.registers.c=cpu.registers.e;
+                cpu.registers.m=1;
             }
-
             76 => {
-
-                cpu.registers.c=cpu.registers.h; cpu.registers.m=1;
+                cpu.registers.c=cpu.registers.h;
+                cpu.registers.m=1;
             }
-
             77 => {
-
-                cpu.registers.c=cpu.registers.l; cpu.registers.m=1;
+                cpu.registers.c=cpu.registers.l;
+                cpu.registers.m=1;
             }
-
             78 => {
-
-                cpu.registers.c=cpu.mmu.rb((cpu.registers.h<<8)+cpu.registers.l); cpu.registers.m=2;
+                cpu.registers.c=cpu.mmu.rb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l as u16), cpu.registers.pc);
+                cpu.registers.m=2;
             }
-
             79 => {
-
-                cpu.registers.c=cpu.registers.a; cpu.registers.m=1;
+                cpu.registers.c=cpu.registers.a;
+                cpu.registers.m=1;
             }
-
             80 => {
-
-                cpu.registers.d=cpu.registers.b; cpu.registers.m=1;
+                cpu.registers.d=cpu.registers.b;
+                cpu.registers.m=1;
             }
-
             81 => {
-
-                cpu.registers.d=cpu.registers.c; cpu.registers.m=1;
+                cpu.registers.d=cpu.registers.c;
+                cpu.registers.m=1;
             }
-
             82 => {
-
-                cpu.registers.d=cpu.registers.d; cpu.registers.m=1;
+                cpu.registers.d=cpu.registers.d;
+                cpu.registers.m=1;
             }
-
             83 => {
-
-                cpu.registers.d=cpu.registers.e; cpu.registers.m=1;
+                cpu.registers.d=cpu.registers.e;
+                cpu.registers.m=1;
             }
-
             84 => {
-
-                cpu.registers.d=cpu.registers.h; cpu.registers.m=1;
+                cpu.registers.d=cpu.registers.h;
+                cpu.registers.m=1;
             }
-
             85 => {
-
-                cpu.registers.d=cpu.registers.l; cpu.registers.m=1;
+                cpu.registers.d=cpu.registers.l;
+                cpu.registers.m=1;
             }
-
             86 => {
-
-                cpu.registers.d=cpu.mmu.rb((cpu.registers.h<<8)+cpu.registers.l); cpu.registers.m=2;
+                cpu.registers.d=cpu.mmu.rb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l), cpu.registers.pc);
+                cpu.registers.m=2;
             }
-
             87 => {
-
-                cpu.registers.d=cpu.registers.a; cpu.registers.m=1;
+                cpu.registers.d=cpu.registers.a;
+                cpu.registers.m=1;
             }
-
             88 => {
-
-                cpu.registers.e=cpu.registers.b; cpu.registers.m=1;
+                cpu.registers.e=cpu.registers.b;
+                cpu.registers.m=1;
             }
-
             89 => {
-
-                cpu.registers.e=cpu.registers.c; cpu.registers.m=1;
+                cpu.registers.e=cpu.registers.c;
+                cpu.registers.m=1;
             }
-
             90 => {
-
-                cpu.registers.e=cpu.registers.d; cpu.registers.m=1;
+                cpu.registers.e=cpu.registers.d;
+                cpu.registers.m=1;
             }
-
             91 => {
-
-                cpu.registers.e=cpu.registers.e; cpu.registers.m=1;
+                cpu.registers.e=cpu.registers.e;
+                cpu.registers.m=1;
             }
-
             92 => {
-
-                cpu.registers.e=cpu.registers.h; cpu.registers.m=1;
+                cpu.registers.e=cpu.registers.h;
+                cpu.registers.m=1;
             }
-
             93 => {
-
-                cpu.registers.e=cpu.registers.l; cpu.registers.m=1;
+                cpu.registers.e=cpu.registers.l;
+                cpu.registers.m=1;
             }
-
             94 => {
-
-                cpu.registers.e=cpu.mmu.rb((cpu.registers.h<<8)+cpu.registers.l); cpu.registers.m=2;
+                cpu.registers.e=cpu.mmu.rb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l), cpu.registers.pc);
+                cpu.registers.m=2;
             }
-
             95 => {
-
-                cpu.registers.e=cpu.registers.a; cpu.registers.m=1;
+                cpu.registers.e=cpu.registers.a;
+                cpu.registers.m=1;
             }
-
             96 => {
-
-                cpu.registers.h=cpu.registers.b; cpu.registers.m=1;
+                cpu.registers.h=cpu.registers.b;
+                cpu.registers.m=1;
             }
-
             97 => {
-
-                cpu.registers.h=cpu.registers.c; cpu.registers.m=1;
+                cpu.registers.h=cpu.registers.c;
+                cpu.registers.m=1;
             }
-
             98 => {
-
-                cpu.registers.h=cpu.registers.d; cpu.registers.m=1;
+                cpu.registers.h=cpu.registers.d;
+                cpu.registers.m=1;
             }
-
             99 => {
-
-                cpu.registers.h=cpu.registers.e; cpu.registers.m=1;
+                cpu.registers.h=cpu.registers.e;
+                cpu.registers.m=1;
             }
-
             100 => {
-
-                cpu.registers.h=cpu.registers.h; cpu.registers.m=1;
+                cpu.registers.h=cpu.registers.h;
+                cpu.registers.m=1;
             }
-
             101 => {
-
-                cpu.registers.h=cpu.registers.l; cpu.registers.m=1;
+                cpu.registers.h=cpu.registers.l;
+                cpu.registers.m=1;
             }
-
             102 => {
-
-                cpu.registers.h=cpu.mmu.rb((cpu.registers.h<<8)+cpu.registers.l); cpu.registers.m=2;
+                cpu.registers.h=cpu.mmu.rb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l), cpu.registers.pc);
+                cpu.registers.m=2;
             }
-
             103 => {
-
-                cpu.registers.h=cpu.registers.a; cpu.registers.m=1;
+                cpu.registers.h=cpu.registers.a;
+                cpu.registers.m=1;
             }
-
             104 => {
-
-                cpu.registers.l=cpu.registers.b; cpu.registers.m=1;
+                cpu.registers.l=cpu.registers.b;
+                cpu.registers.m=1;
             }
-
             105 => {
-
-                cpu.registers.l=cpu.registers.c; cpu.registers.m=1;
+                cpu.registers.l=cpu.registers.c;
+                cpu.registers.m=1;
             }
-
             106 => {
-
-                cpu.registers.l=cpu.registers.d; cpu.registers.m=1;
+                cpu.registers.l=cpu.registers.d;
+                cpu.registers.m=1;
             }
-
             107 => {
-
-                cpu.registers.l=cpu.registers.e; cpu.registers.m=1;
+                cpu.registers.l=cpu.registers.e;
+                cpu.registers.m=1;
             }
-
             108 => {
-
-                cpu.registers.l=cpu.registers.h; cpu.registers.m=1;
+                cpu.registers.l=cpu.registers.h;
+                cpu.registers.m=1;
             }
-
             109 => {
-
-                cpu.registers.l=cpu.registers.l; cpu.registers.m=1;
+                cpu.registers.l=cpu.registers.l;
+                cpu.registers.m=1;
             }
-
             110 => {
-
-                cpu.registers.l=cpu.mmu.rb((cpu.registers.h<<8)+cpu.registers.l); cpu.registers.m=2;
+                cpu.registers.l=cpu.mmu.rb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l), cpu.registers.pc);
+                cpu.registers.m=2;
             }
-
             111 => {
-
-                cpu.registers.l=cpu.registers.a; cpu.registers.m=1;
+                cpu.registers.l=cpu.registers.a;
+                cpu.registers.m=1;
             }
-
             112 => {
-
-                cpu.mmu.wb((cpu.registers.h<<8)+cpu.registers.l,cpu.registers.b); cpu.registers.m=2;
+                cpu.mmu.wb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l),cpu.registers.b);
+                cpu.registers.m=2;
             }
-
             113 => {
-
-                cpu.mmu.wb((cpu.registers.h<<8)+cpu.registers.l,cpu.registers.c); cpu.registers.m=2;
+                cpu.mmu.wb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l),cpu.registers.c);
+                cpu.registers.m=2;
             }
-
             114 => {
-
-                cpu.mmu.wb((cpu.registers.h<<8)+cpu.registers.l,cpu.registers.d); cpu.registers.m=2;
+                cpu.mmu.wb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l),cpu.registers.d);
+                cpu.registers.m=2;
             }
-
             115 => {
-
-                cpu.mmu.wb((cpu.registers.h<<8)+cpu.registers.l,cpu.registers.e); cpu.registers.m=2;
+                cpu.mmu.wb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l),cpu.registers.e);
+                cpu.registers.m=2;
             }
-
             116 => {
-
-                cpu.mmu.wb((cpu.registers.h<<8)+cpu.registers.l,cpu.registers.h); cpu.registers.m=2;
+                cpu.mmu.wb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l),cpu.registers.h);
+                cpu.registers.m=2;
             }
-
             117 => {
-
-                cpu.mmu.wb((cpu.registers.h<<8)+cpu.registers.l,cpu.registers.l); cpu.registers.m=2;
+                cpu.mmu.wb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l),cpu.registers.l);
+                cpu.registers.m=2;
             }
-
             118 => {
-
-                Z80._halt=1; cpu.registers.m=1;
+                cpu.halt = 1;
+                cpu.registers.m=1;
             }
-
             119 => {
-
-                cpu.mmu.wb((cpu.registers.h<<8)+cpu.registers.l,cpu.registers.a); cpu.registers.m=2;
+                cpu.mmu.wb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l),cpu.registers.a);
+                cpu.registers.m=2;
             }
-
             120 => {
-
-                cpu.registers.a=cpu.registers.b; cpu.registers.m=1;
+                cpu.registers.a=cpu.registers.b;
+                cpu.registers.m=1;
             }
-
             121 => {
-
-                cpu.registers.a=cpu.registers.c; cpu.registers.m=1;
+                cpu.registers.a=cpu.registers.c;
+                cpu.registers.m=1;
             }
-
             122 => {
-
-                cpu.registers.a=cpu.registers.d; cpu.registers.m=1;
+                cpu.registers.a=cpu.registers.d;
+                cpu.registers.m=1;
             }
-
             123 => {
-
-                cpu.registers.a=cpu.registers.e; cpu.registers.m=1;
+                cpu.registers.a=cpu.registers.e;
+                cpu.registers.m=1;
             }
-
             124 => {
-
-                cpu.registers.a=cpu.registers.h; cpu.registers.m=1;
+                cpu.registers.a=cpu.registers.h;
+                cpu.registers.m=1;
             }
-
             125 => {
-
-                cpu.registers.a=cpu.registers.l; cpu.registers.m=1;
+                cpu.registers.a=cpu.registers.l;
+                cpu.registers.m=1;
             }
-
             126 => {
-
-                cpu.registers.a=cpu.mmu.rb((cpu.registers.h<<8)+cpu.registers.l); cpu.registers.m=2;
+                cpu.registers.a=cpu.mmu.rb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l), cpu.registers.pc);
+                cpu.registers.m=2;
             }
-
             127 => {
-
-                cpu.registers.a=cpu.registers.a; cpu.registers.m=1;
+                cpu.registers.a=cpu.registers.a;
+                cpu.registers.m=1;
             }
-
             128 => {
-
-                let a=cpu.registers.a; cpu.registers.a+=cpu.registers.b; cpu.registers.f=(cpu.registers.a>255)?0x10:0; cpu.registers.a&=255; if(!cpu.registers.a) cpu.registers.f|=0x80; if((cpu.registers.a^cpu.registers.b^a)&0x10) cpu.registers.f|=0x20; cpu.registers.m=1;
+                let a=cpu.registers.a;
+                cpu.registers.a = a.wrapping_add(cpu.registers.b);
+                cpu.registers.f=if (cpu.registers.a>255) != 0 {0x10} else {0};
+                if cpu.registers.a == 0 {
+                    cpu.registers.f|=0x80;
+                }
+                if ((cpu.registers.a ^ cpu.registers.b ^ a)&0x10) != 0  {
+                    cpu.registers.f|=0x20;
+                }
+                cpu.registers.m=1;
             }
-
             129 => {
-
-                let a=cpu.registers.a; cpu.registers.a+=cpu.registers.c; cpu.registers.f=(cpu.registers.a>255)?0x10:0; cpu.registers.a&=255; if(!cpu.registers.a) cpu.registers.f|=0x80; if((cpu.registers.a^cpu.registers.c^a)&0x10) cpu.registers.f|=0x20; cpu.registers.m=1;
+                let a=cpu.registers.a;
+                cpu.registers.a= a.wrapping_add(cpu.registers.c);
+                cpu.registers.f=if (cpu.registers.a>255) {0x10} else {0};
+                if cpu.registers.a == 0 {
+                    cpu.registers.f|=0x80;
+                }
+                if((cpu.registers.a^cpu.registers.c^a)&0x10) cpu.registers.f|=0x20; cpu.registers.m=1;
             }
 
             130 => {
