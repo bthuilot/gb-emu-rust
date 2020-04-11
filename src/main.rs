@@ -1,12 +1,12 @@
-use GameboyEmulator::CPU;
-use GameboyEmulator::Memory;
-use pixel_canvas::{Canvas, Color, input::MouseState};
+use pixel_canvas::{input::MouseState, Canvas, Color};
 use GameboyEmulator::ops;
+use GameboyEmulator::Memory;
+use GameboyEmulator::CPU;
 
 fn main() {
     let r1: u8 = 250;
     let r2: u8 = 23;
-    println!("{}", r1.wrapping_add(r2));
+    println!("{}", r1 + r2);
 
     // Configure the window that you want to draw in. You can add an event
     // handler to build interactive art. Input handlers for common use are

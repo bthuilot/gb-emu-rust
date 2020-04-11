@@ -7,311 +7,352 @@ pub mod ops {
                 cpu.registers.m = 1;
             }
             1 => {
-                cpu.registers.c=cpu.cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
-                cpu.registers.b=cpu.cpu.mmu.rb(cpu.registers.pc+1, cpu.registers.pc);
-                cpu.registers.pc+=2;
+                cpu.registers.c=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                cpu.registers.b=cpu.mmu.rb(cpu.registers.pc.wrapping_add(1), cpu.registers.pc);
+                cpu.registers.pc = cpu.registers.pc.wrapping_add(2);
                 cpu.registers.m=3;
             }
             2 => {
-                cpu.cpu.mmu.wb(((cpu.registers.b as u16)<<8) + (cpu.registers.c as u16), cpu.registers.a);
+                cpu.mmu.wb((cpu.registers.b as u16).wrapping_shl(8).wrapping_add(cpu.registers.c as u16), cpu.registers.a);
                 cpu.registers.m=2;
             }
             3 => {
-                cpu.registers.c=(cpu.registers.c+1)&255;
+                cpu.registers.c=cpu.registers.c.wrapping_add(1);
                 if cpu.registers.c == 0 {
-                    cpu.registers.b=(cpu.registers.b+1)&255;
+                    cpu.registers.b=cpu.registers.b.wrapping_add(1);
                 }
                 cpu.registers.m=1;
             }
             4 => {
-                cpu.registers.b += 1;
-                cpu.registers.b &= 255;
+                cpu.registers.b = cpu.registers.b.wrapping_add(1);
                 cpu.registers.f = if cpu.registers.b != 0 { 0 } else { 0x80 };
                 cpu.registers.m=1;
             }
             5 => {
-                cpu.registers.b -= 1;
-                cpu.registers.b&=255;
+                cpu.registers.b = cpu.registers.b.wrapping_sub(1);
                 cpu.registers.f = if cpu.registers.b != 0 { 0 } else { 0x80 };
                 cpu.registers.m=1;
             }
             6 => {
-                cpu.registers.b=cpu.cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                cpu.registers.b=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
                 cpu.registers.pc+=1;
-cpu.registers.m=2;
+                cpu.registers.m=2;
             }
             7 => {
                 let ci= if cpu.registers.a&0x80 != 0 { 1 } else {0};
                 let co= if cpu.registers.a&0x80 != 0 {0x10} else {0};
-                cpu.registers.a=(cpu.registers.a<<1)+ci;
-                cpu.registers.a&=255;
-                cpu.registers.f=(cpu.registers.f&0xEF)+co;
+                cpu.registers.a=cpu.registers.a.wrapping_shl(1).wrapping_add(ci);
+                cpu.registers.f=(cpu.registers.f&0xEF).wrapping_add(co);
                 cpu.registers.m=1;
             }
             8 => {
                 // TODO
             }
             9 => {
-                let mut hl =((cpu.registers.h as u16 )<<8)+ (cpu.registers.l as u16);
-                hl+=((cpu.registers.b as u16) <<8) + (cpu.registers.c as u16);
+                let mut hl = (cpu.registers.h as u16 ).wrapping_shl(8).wrapping_add(cpu.registers.l as u16);
+                hl = hl.wrapping_add((cpu.registers.b as u16).wrapping_add(8).wrapping_add(cpu.registers.c as u16));
                 if hl>65535 {
                     cpu.registers.f|=0x10;
                 } else {
                     cpu.registers.f&=0xEF;
                 }
-                cpu.registers.h= ((hl>>8) as u8) & 255;
-                cpu.registers.l=(hl as u8)&255;
+                cpu.registers.h= hl.wrapping_shr(8) as u8;
+                cpu.registers.l=hl as u8;
                 cpu.registers.m=3;
             }
             10 => {
-                cpu.registers.a=cpu.mmu.rb(((cpu.registers.b as u16)<<8)+(cpu.registers.c as u16), cpu.registers.pc);
+                cpu.registers.a=cpu.mmu.rb((cpu.registers.b as u16).wrapping_shl(8).wrapping_add(cpu.registers.c as u16), cpu.registers.pc);
                 cpu.registers.m=2;
             }
             11 => {
-                cpu.registers.c=(cpu.registers.c-1)&255;
+                cpu.registers.c=cpu.registers.c.wrapping_sub(1);
                 if cpu.registers.c == 255 {
-                    cpu.registers.b=(cpu.registers.b-1)&255;
+                    cpu.registers.b=cpu.registers.b.wrapping_sub(1);
                 }
                 cpu.registers.m=1;
             }
             12 => {
-                cpu.registers.c+=1;
-                cpu.registers.c&=255;
+                cpu.registers.c = cpu.registers.c.wrapping_add(1);
                 cpu.registers.f = if cpu.registers.c != 0 { 0 } else { 0x80};
                 cpu.registers.m=1;
             }
             13 => {
-                cpu.registers.c-=1;
-                cpu.registers.c&=255;
+                cpu.registers.c = cpu.registers.c.wrapping_sub(1);
                 cpu.registers.f=if cpu.registers.c != 0 { 0 } else {0x80};
                 cpu.registers.m=1;
             }
             14 => {
                 cpu.registers.c = cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
-                cpu.registers.pc+=1;
+                cpu.registers.pc= cpu.registers.pc.wrapping_add(1);
                 cpu.registers.m=2;
             }
             15 => {
                 let ci= if (cpu.registers.a&1) != 0 {0x80} else {0};
                 let co= if (cpu.registers.a&1) != 0 {0x10} else {0};
-                cpu.registers.a=(cpu.registers.a>>1)+ci;
-                cpu.registers.a&=255;
-                cpu.registers.f=(cpu.registers.f&0xEF)+co;
+                cpu.registers.a=cpu.registers.a.wrapping_shr(1).wrapping_add(ci);
+                cpu.registers.f=(cpu.registers.f&0xEF).wrapping_add(co);
                 cpu.registers.m=1;
             }
             16 => {
                 let mut i =cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
                 if i>127 {
-                    i = - ((!i + 1) & 255);
-                    // TODO clean this up
+                    i = (!i).wrapping_add(1);
                 }
-                cpu.registers.pc+=1;
+                cpu.registers.pc = cpu.registers.pc.wrapping_add(1);
                 cpu.registers.m=2;
-                cpu.registers.b-=1;
+                cpu.registers.b = cpu.registers.b.wrapping_sub(1);
                 if cpu.registers.b != 0 {
-                    cpu.registers.pc+= (i as u16);
-                    cpu.registers.m+=1;
+                    cpu.registers.pc = cpu.registers.pc.wrapping_sub(i as u16);
+                    cpu.registers.m = cpu.registers.m.wrapping_add(1);
                 }
             }
             17 => {
-                cpu.registers. e= cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
-                cpu.registers.d = cpu.mmu.rb(cpu.registers.pc+1, cpu.registers.pc);
-                cpu.registers.pc+=2;
+                cpu.registers.e = cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                cpu.registers.d = cpu.mmu.rb(cpu.registers.pc.wrapping_add(1), cpu.registers.pc);
+                cpu.registers.pc = cpu.registers.pc.wrapping_add(2);
                 cpu.registers.m=3;
             }
             18 => {
-                cpu.mmu.wb(((cpu.registers.d as u16) <<8) + (cpu.registers.e as u16), cpu.registers.a);
+                cpu.mmu.wb((cpu.registers.d as u16).wrapping_shl(8).wrapping_add(cpu.registers.e as u16), cpu.registers.a);
                 cpu.registers.m=2;
             }
             19 => {
-                cpu.registers.e=(cpu.registers.e+1)&255;
+                cpu.registers.e=cpu.registers.e.wrapping_add(1);
                 if cpu.registers.e == 0 {
-                    cpu.registers.d = (cpu.registers.d + 1) & 255;
+                    cpu.registers.d = cpu.registers.d.wrapping_add(1);
                 }
                 cpu.registers.m=1;
             }
             20 => {
-                cpu.registers.d+=1;
-                cpu.registers.d&=255;
+                cpu.registers.d = cpu.registers.d.wrapping_add(1);
                 cpu.registers.f= if cpu.registers.d != 0 {0}  else {0x80};
                 cpu.registers.m=1;
             }
             21 => {
-                cpu.registers.d-=1;
-                cpu.registers.d&=255;
+                cpu.registers.d = cpu.registers.d.wrapping_sub(1);
                 cpu.registers.f = if cpu.registers.d != 0 {0} else {0x80};
                 cpu.registers.m=1;
             }
             22 => {
                 cpu.registers.d=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
-                cpu.registers.pc+=1;
+                cpu.registers.pc = cpu.registers.pc.wrapping_add(1);
                 cpu.registers.m=2;
             }
             23 => {
                 let ci=if cpu.registers.f&0x10 != 0 {1} else {0};
                 let co=if cpu.registers.a&0x80 != 0 {0x10} else {0};
-                cpu.registers.a=(cpu.registers.a<<1)+ci;
-                cpu.registers.a&=255;
-                cpu.registers.f= (cpu.registers.f&0xEF) + co;
+                cpu.registers.a=cpu.registers.a.wrapping_shl(1).wrapping_add(ci);
+                cpu.registers.f= (cpu.registers.f&0xEF).wrapping_add(co);
                 cpu.registers.m=1;
             }
             24 => {
                 let mut i=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
                 if i>127 {
-                    i=-((!i+1)&255);
+                    i = (!i).wrapping_add(255)
+                        // tODO fix
                 }
                 cpu.registers.pc+=1;
                 cpu.registers.m=2;
-                cpu.registers.pc += (i as u16);
+                cpu.registers.pc -= (i as u16);
                 cpu.registers.m+=1;
             }
             25 => {
-                let mut hl= ((cpu.registers.h as u16)<<8) + (cpu.registers.l as u16);
-                hl += ((cpu.registers.d as u16) <<8)+ (cpu.registers.e as u16);
+                let mut hl= (cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l as u16);
+                hl = hl.wrapping_add((cpu.registers.d as u16).wrapping_shl(8).wrapping_add(cpu.registers.e as u16));
                 if hl>65535 {
                     cpu.registers.f |= 0x10;
                 } else {
                     cpu.registers.f &= 0xEF;
                 }
-                cpu.registers.h = ((hl>>8) as u8) & 255;
-                cpu.registers.l = (hl&255) as u8;
+                cpu.registers.h = hl.wrapping_shr(8) as u8;
+                cpu.registers.l = hl as u8;
                 cpu.registers.m=3;
             }
             26 => {
-                cpu.registers.a=cpu.mmu.rb(((cpu.registers.d as u16)<<8)+ (cpu.registers.e as u16), cpu.registers.pc);
+                cpu.registers.a=cpu.mmu.rb((cpu.registers.d as u16).wrapping_shl(8).wrapping_add(cpu.registers.e as u16), cpu.registers.pc);
                 cpu.registers.m=2;
             }
             27 => {
-                cpu.registers.e=(cpu.registers.e-1)&255;
+                cpu.registers.e=cpu.registers.e.wrapping_sub(1);
                 if cpu.registers.e == 255 {
-                    cpu.registers.d=(cpu.registers.d-1)&255;
+                    cpu.registers.d=cpu.registers.d.wrapping_sub(1);
                 }
                 cpu.registers.m=1;
             }
             28 => {
-                cpu.registers.e+=1;
-                cpu.registers.e&=255;
+                cpu.registers.e = cpu.registers.e.wrapping_add(1);
                 cpu.registers.f = if cpu.registers.e != 0 {0} else {0x80};
                 cpu.registers.m=1;
             }
             29 => {
-                cpu.registers.e-=1;
-                cpu.registers.e&=255;
+                cpu.registers.e = cpu.registers.e.wrapping_sub(1);
                 cpu.registers.f=if cpu.registers.e != 0 {0} else {0x80};
                 cpu.registers.m=1;
             }
             30 => {
-
-                cpu.registers.e=cpu.mmu.rb(cpu.registers.pc); cpu.registers.pc+=1; cpu.registers.m=2;
+                cpu.registers.e=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                cpu.registers.pc= cpu.registers.pc.wrapping_add(1);
+                cpu.registers.m=2;
             }
-
             31 => {
-
-                let ci=cpu.registers.f&0x10?0x80:0; let co=cpu.registers.a&1?0x10:0; cpu.registers.a=(cpu.registers.a>>1)+ci; cpu.registers.a&=255; cpu.registers.f=(cpu.registers.f&0xEF)+co; cpu.registers.m=1;
+                let ci=if cpu.registers.f&0x10 != 0 {0x80} else {0};
+                let co=if cpu.registers.a&1 != 0 {0x10} else {0};
+                cpu.registers.a= cpu.registers.a.wrapping_shr(1).wrapping_add(ci);
+                cpu.registers.f=(cpu.registers.f&0xEF).wrapping_add(co);
+                cpu.registers.m=1;
             }
-
             32 => {
-
-                let i=cpu.mmu.rb(cpu.registers.pc); if(i>127) i=-((~i+1)&255); cpu.registers.pc+=1; cpu.registers.m=2; if((cpu.registers.f&0x80)==0x00) { cpu.registers.pc+=i; cpu.registers.m+=1; }
+                let i= cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                if i>127 {
+                    i = ((!i + 1)&255);
+                    // TODO fix
+                }
+                cpu.registers.pc = cpu.registers.pc.wrapping_add(1);
+                cpu.registers.m=2;
+                if (cpu.registers.f&0x80)==0x00 {
+                    cpu.registers.pc.wrapping_add(i as u16);
+                    cpu.registers.m = cpu.registers.m.wrapping_add(1);
+                }
             }
-
             33 => {
-
-                cpu.registers.l=cpu.mmu.rb(cpu.registers.pc); cpu.registers.h=cpu.mmu.rb(cpu.registers.pc+1); cpu.registers.pc+=2; cpu.registers.m=3;
+                cpu.registers.l=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                cpu.registers.h=cpu.mmu.rb(cpu.registers.pc.wrapping_add(1), cpu.registers.pc);
+                cpu.registers.pc= cpu.registers.pc.wrapping_add(2);
+                cpu.registers.m=3;
             }
-
             34 => {
-
-                cpu.mmu.wb((cpu.registers.h<<8)+cpu.registers.l, cpu.registers.a); cpu.registers.l=(cpu.registers.l+1)&255; if(!cpu.registers.l) cpu.registers.h=(cpu.registers.h+1)&255; cpu.registers.m=2;
+                cpu.mmu.wb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l as u16), cpu.registers.a);
+                cpu.registers.l = cpu.registers.l.wrapping_add(1);
+                if cpu.registers.l == 0 {
+                    cpu.registers.h=cpu.registers.h.wrapping_add(1);
+                }
+                cpu.registers.m=2;
             }
-
             35 => {
-
-                cpu.registers.l=(cpu.registers.l+1)&255; if(!cpu.registers.l) cpu.registers.h=(cpu.registers.h+1)&255; cpu.registers.m=1;
+                cpu.registers.l=cpu.registers.l.wrapping_add(1);
+                if cpu.registers.l== 0 {
+                    cpu.registers.h=cpu.registers.h.wrapping_add(1);
+                }
+                cpu.registers.m=1;
             }
-
             36 => {
-
-                cpu.registers.h+=1; cpu.registers.h&=255; cpu.registers.f=cpu.registers.h?0:0x80; cpu.registers.m=1;
+                cpu.registers.h= cpu.registers.h.wrapping_add(1);
+                cpu.registers.f= if cpu.registers.h != 0 {0} else {0x80};
+                cpu.registers.m=1;
             }
-
             37 => {
-
-                cpu.registers.h-=1; cpu.registers.h&=255; cpu.registers.f=cpu.registers.h?0:0x80; cpu.registers.m=1;
+                cpu.registers.h = cpu.registers.h.wrapping_sub(1);
+                cpu.registers.f = if cpu.registers.h != 0 {0} else {0x80};
+                cpu.registers.m = 1;
             }
-
             38 => {
-
-                cpu.registers.h=cpu.mmu.rb(cpu.registers.pc); cpu.registers.pc+=1; cpu.registers.m=2;
+                cpu.registers.h=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                cpu.registers.pc = cpu.registers.pc.wrapping_add(1);
+                cpu.registers.m=2;
             }
-
             39 => {
-
-                let a=cpu.registers.a; if((cpu.registers.f&0x20)||((cpu.registers.a&15)>9)) cpu.registers.a+=6; cpu.registers.f&=0xEF; if((cpu.registers.f&0x20)||(a>0x99)) { cpu.registers.a+=0x60; cpu.registers.f|=0x10; } cpu.registers.m=1;
+                let a=cpu.registers.a;
+                if (cpu.registers.f&0x20) != 0 ||((cpu.registers.a&15)>9){
+                    cpu.registers.a = a.wrapping_add(6);
+                }
+                cpu.registers.f&=0xEF;
+                if (cpu.registers.f&0x20) != 0 ||(a>0x99) {
+                    cpu.registers.a = cpu.registers.a.wrapping_add(0x60);
+                    cpu.registers.f|=0x10;
+                }
+                cpu.registers.m=1;
             }
-
             40 => {
-
-                let i=cpu.mmu.rb(cpu.registers.pc); if(i>127) i=-((~i+1)&255); cpu.registers.pc+=1; cpu.registers.m=2; if((cpu.registers.f&0x80)==0x80) { cpu.registers.pc+=i; cpu.registers.m+=1; }
+                let i=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                if i>127 {
+                    i= ((!i+1)&255);
+                    // TODO fix this
+                }
+                cpu.registers.pc = cpu.registers.pc.wrapping_add(1);
+                cpu.registers.m=2;
+                if (cpu.registers.f&0x80) == 0x80  {
+                    cpu.registers.pc = cpu.registers.pc.wrapping_add(i as u16);
+                    cpu.registers.m+=1;
+                }
             }
-
             41 => {
-
-                let hl=(cpu.registers.h<<8)+cpu.registers.l; hl+=(cpu.registers.h<<8)+cpu.registers.l; if(hl>65535) cpu.registers.f|=0x10; else cpu.registers.f&=0xEF; cpu.registers.h=(hl>>8)&255; cpu.registers.l=hl&255; cpu.registers.m=3;
+                let mut hl=(cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l as u16);
+                hl = hl.wrapping_add((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l as u16));
+                if hl>65535 {
+                    cpu.registers.f|=0x10;
+                } else {
+                    cpu.registers.f&=0xEF;
+                }
+                cpu.registers.h=hl.wrapping_shr(8) as u8;
+                cpu.registers.l=hl as u8;
+                cpu.registers.m=3;
             }
-
             42 => {
-
-                cpu.registers.a=cpu.mmu.rb((cpu.registers.h<<8)+cpu.registers.l); cpu.registers.l=(cpu.registers.l+1)&255; if(!cpu.registers.l) cpu.registers.h=(cpu.registers.h+1)&255; cpu.registers.m=2;
+                cpu.registers.a=cpu.mmu.rb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l as u16), cpu.registers.pc);
+                cpu.registers.l=cpu.registers.l.wrapping_add(1);
+                if cpu.registers.l == 0 {
+                    cpu.registers.h=cpu.registers.h.wrapping_add(1);
+                }
+                cpu.registers.m=2;
             }
-
             43 => {
-
-                cpu.registers.l=(cpu.registers.l-1)&255; if(cpu.registers.l==255) cpu.registers.h=(cpu.registers.h-1)&255; cpu.registers.m=1;
+                cpu.registers.l=cpu.registers.l.wrapping_sub(1);
+                if cpu.registers.l==255  {
+                    cpu.registers.h= cpu.registers.h.wrapping_sub(1);
+                }
+                cpu.registers.m=1;
             }
-
             44 => {
-
-                cpu.registers.l+=1; cpu.registers.l&=255; cpu.registers.f=cpu.registers.l?0:0x80; cpu.registers.m=1;
+                cpu.registers.l = cpu.registers.l.wrapping_add(1);
+                cpu.registers.f = if cpu.registers.l != 0 {0} else {0x80};
+                cpu.registers.m=1;
             }
-
             45 => {
-
-                cpu.registers.l-=1; cpu.registers.l&=255; cpu.registers.f=cpu.registers.l?0:0x80; cpu.registers.m=1;
+                cpu.registers.l = cpu.registers.l.wrapping_sub(1);
+                cpu.registers.f = if cpu.registers.l != 0 {0} else {0x80};
+                cpu.registers.m=1;
             }
-
             46 => {
-
-                cpu.registers.l=cpu.mmu.rb(cpu.registers.pc); cpu.registers.pc+=1; cpu.registers.m=2;
+                cpu.registers.l = cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                cpu.registers.pc = cpu.registers.pc.wrapping_add(1);
+                cpu.registers.m=2;
             }
-
             47 => {
-
-                cpu.registers.a ^= 255; cpu.registers.f=cpu.registers.a?0:0x80; cpu.registers.m=1;
+                cpu.registers.a ^= 255;
+                cpu.registers.f = if cpu.registers.a != 0 {0} else {0x80};
+                cpu.registers.m=1;
             }
-
             48 => {
-
-                let i=cpu.mmu.rb(cpu.registers.pc); if(i>127) i=-((~i+1)&255); cpu.registers.pc+=1; cpu.registers.m=2; if((cpu.registers.f&0x10)==0x00) { cpu.registers.pc+=i; cpu.registers.m+=1; }
+                let i=cpu.mmu.rb(cpu.registers.pc, cpu.registers.pc);
+                if(i>127) {
+                    i= ((!i+1)&255);
+                    // TODO FIX
+                }
+                cpu.registers.pc = cpu.registers.pc.wrapping_add(1);
+                cpu.registers.m=2;
+                if (cpu.registers.f&0x10)==0x00  {
+                    cpu.registers.pc = cpu.registers.pc.wrapping_add(i);
+                    cpu.registers.m = cpu.registers.m.wrapping_add(1);
+                }
             }
-
             49 => {
-
-                cpu.registers.sp=cpu.mmu.rw(cpu.registers.pc); cpu.registers.pc+=2; cpu.registers.m=3;
+                cpu.registers.sp=cpu.mmu.rw(cpu.registers.pc, cpu.registers.pc);
+                cpu.registers.pc = cpu.registers.pc.wrapping_add(2);
+                cpu.registers.m=3;
             }
-
             50 => {
-
-                cpu.mmu.wb((cpu.registers.h<<8)+cpu.registers.l, cpu.registers.a); cpu.registers.l=(cpu.registers.l-1)&255; if(cpu.registers.l==255) cpu.registers.h=(cpu.registers.h-1)&255; cpu.registers.m=2;
+                cpu.mmu.wb((cpu.registers.h as u16).wrapping_shl(8).wrapping_add(cpu.registers.l as u16), cpu.registers.a);
+                cpu.registers.l = cpu.registers.l.wrapping_sub(1);
+                if cpu.registers.l==255  {
+                    cpu.registers.h=cpu.registers.h.wrapping_sub(1);
+                }
+                cpu.registers.m=2;
             }
-
             51 => {
-
-                cpu.registers.sp=(cpu.registers.sp+1)&65535; cpu.registers.m=1;
+                cpu.registers.sp=cpu.registers.sp.wrapping_add(1);
+                cpu.registers.m=1;
             }
-
             52 => {
-
                 let i=cpu.mmu.rb((cpu.registers.h<<8)+cpu.registers.l)+1; i&=255; cpu.mmu.wb((cpu.registers.h<<8)+cpu.registers.l,i); cpu.registers.f=i?0:0x80; cpu.registers.m=3;
             }
 
@@ -1115,7 +1156,7 @@ cpu.registers.m=2;
 
                 /*Undefined map entry*/
                 let opc = cpu.registers.pc-1;
-                LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
+                // LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
                 Z80._stop=1;
 
             }
@@ -1160,7 +1201,7 @@ cpu.registers.m=2;
 
                 /*Undefined map entry*/
                 let opc = cpu.registers.pc-1;
-                LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
+                // LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
                 Z80._stop=1;
 
             }
@@ -1175,7 +1216,7 @@ cpu.registers.m=2;
 
                 /*Undefined map entry*/
                 let opc = cpu.registers.pc-1;
-                LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
+                // LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
                 Z80._stop=1;
 
             }
@@ -1201,7 +1242,6 @@ cpu.registers.m=2;
             }
 
             226 => {
-
                 cpu.mmu.wb(0xFF00+cpu.registers.c,cpu.registers.a); cpu.registers.m=2;
             }
 
@@ -1210,7 +1250,7 @@ cpu.registers.m=2;
 
                 /*Undefined map entry*/
                 let opc = cpu.registers.pc-1;
-                LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
+                // LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
                 Z80._stop=1;
 
             }
@@ -1220,7 +1260,7 @@ cpu.registers.m=2;
 
                 /*Undefined map entry*/
                 let opc = cpu.registers.pc-1;
-                LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
+                // LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
                 Z80._stop=1;
 
             }
@@ -1260,7 +1300,7 @@ cpu.registers.m=2;
 
                 /*Undefined map entry*/
                 let opc = cpu.registers.pc-1;
-                LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
+                // LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
                 Z80._stop=1;
 
             }
@@ -1270,7 +1310,7 @@ cpu.registers.m=2;
 
                 /*Undefined map entry*/
                 let opc = cpu.registers.pc-1;
-                LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
+                // LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
                 Z80._stop=1;
 
             }
@@ -1280,7 +1320,7 @@ cpu.registers.m=2;
 
                 /*Undefined map entry*/
                 let opc = cpu.registers.pc-1;
-                LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
+                // LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
                 Z80._stop=1;
 
             }
@@ -1320,7 +1360,7 @@ cpu.registers.m=2;
 
                 /*Undefined map entry*/
                 let opc = cpu.registers.pc-1;
-                LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
+                // LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
                 Z80._stop=1;
 
             }
@@ -1350,7 +1390,7 @@ cpu.registers.m=2;
 
                 /*Undefined map entry*/
                 let opc = cpu.registers.pc-1;
-                LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
+                // LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
                 Z80._stop=1;
 
             }
@@ -1370,7 +1410,7 @@ cpu.registers.m=2;
 
                 /*Undefined map entry*/
                 let opc = cpu.registers.pc-1;
-                LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
+                // LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
                 Z80._stop=1;
 
             }
@@ -1380,7 +1420,7 @@ cpu.registers.m=2;
 
                 /*Undefined map entry*/
                 let opc = cpu.registers.pc-1;
-                LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
+                // LOG.out('Z80', 'Unimplemented instruction at $'+opc.toString(16)+', stopping.');
                 Z80._stop=1;
 
             }
