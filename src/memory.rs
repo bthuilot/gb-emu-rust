@@ -1,208 +1,312 @@
-pub mod mmu {
-    use crate::cpu::cpu::Z80;
-    use std::fs;
-    use std::env;
+use crate::cpu::Z80;
+use crate::gameboy::Timer;
+use crate::input::Input;
+use crate::speed::{Speed};
+use crate::cart::controller::Cart;
+use crate::bit_functions::{val, test};
 
-    const BIOS: [u8; 256] = [
-        0x31, 0xFE, 0xFF, 0xAF, 0x21, 0xFF, 0x9F, 0x32, 0xCB, 0x7C, 0x20, 0xFB, 0x21, 0x26, 0xFF, 0x0E,
-        0x11, 0x3E, 0x80, 0x32, 0xE2, 0x0C, 0x3E, 0xF3, 0xE2, 0x32, 0x3E, 0x77, 0x77, 0x3E, 0xFC, 0xE0,
-        0x47, 0x11, 0x04, 0x01, 0x21, 0x10, 0x80, 0x1A, 0xCD, 0x95, 0x00, 0xCD, 0x96, 0x00, 0x13, 0x7B,
-        0xFE, 0x34, 0x20, 0xF3, 0x11, 0xD8, 0x00, 0x06, 0x08, 0x1A, 0x13, 0x22, 0x23, 0x05, 0x20, 0xF9,
-        0x3E, 0x19, 0xEA, 0x10, 0x99, 0x21, 0x2F, 0x99, 0x0E, 0x0C, 0x3D, 0x28, 0x08, 0x32, 0x0D, 0x20,
-        0xF9, 0x2E, 0x0F, 0x18, 0xF3, 0x67, 0x3E, 0x64, 0x57, 0xE0, 0x42, 0x3E, 0x91, 0xE0, 0x40, 0x04,
-        0x1E, 0x02, 0x0E, 0x0C, 0xF0, 0x44, 0xFE, 0x90, 0x20, 0xFA, 0x0D, 0x20, 0xF7, 0x1D, 0x20, 0xF2,
-        0x0E, 0x13, 0x24, 0x7C, 0x1E, 0x83, 0xFE, 0x62, 0x28, 0x06, 0x1E, 0xC1, 0xFE, 0x64, 0x20, 0x06,
-        0x7B, 0xE2, 0x0C, 0x3E, 0x87, 0xF2, 0xF0, 0x42, 0x90, 0xE0, 0x42, 0x15, 0x20, 0xD2, 0x05, 0x20,
-        0x4F, 0x16, 0x20, 0x18, 0xCB, 0x4F, 0x06, 0x04, 0xC5, 0xCB, 0x11, 0x17, 0xC1, 0xCB, 0x11, 0x17,
-        0x05, 0x20, 0xF5, 0x22, 0x23, 0x22, 0x23, 0xC9, 0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B,
-        0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D, 0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E,
-        0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99, 0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC,
-        0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E, 0x3c, 0x42, 0xB9, 0xA5, 0xB9, 0xA5, 0x42, 0x4C,
-        0x21, 0x04, 0x01, 0x11, 0xA8, 0x00, 0x1A, 0x13, 0xBE, 0x20, 0xFE, 0x23, 0x7D, 0xFE, 0x34, 0x20,
-        0xF5, 0x06, 0x19, 0x78, 0x86, 0x23, 0x05, 0x20, 0xFB, 0x86, 0x20, 0xFE, 0x3E, 0x01, 0xE0, 0x50
-    ];
+// DIV is the divider register which is incremented periodically by
+// the Gameboy.
+const DIV: u16 = 0xFF04;
+// TIMA is the timer counter register which is incremented by a clock
+// frequency specified in the TAC register.
+const TIMA: u16 = 0xFF05;
+// TMA is the timer modulo register. When the TIMA overflows, this data
+// will be loaded into the TIMA register.
+const TMA: u16 = 0xFF06;
+// TAC is the timer control register. Writing to this register will
+// start and stop the timer, and select the clock speed for the timer.
+const TAC: u16 = 0xFF07;
 
-    pub type MemoryAddr = u16;
-    pub struct MMU {
-        inbios: bool,
-//        bios: [u8; 0],
-        rom: Vec<u8>,
-        wram: [u8; 8192],
-        eram: [u8; 8192],
-        zram: [u8; 127],
+pub type MemoryAddr = u16;
 
+pub struct MMU {
+    pub cart: Cart,
+    timer: &'static Timer,
+    input: &'static mut Input,
+    speed: &'static mut Speed,
+    cgb: bool,
+    ram: [u8; 0x100],
+    vram: [u8; 0x4000],
+    // Index of the current VRAM bank
+    vram_bank: u8,
+
+    wram: [u8; 0x9000],
+    wram_bank: u8,
+
+    oam: [u8; 0x100],
+
+    // CGB HDMA transfer variables
+    hdma_len: u8,
+    hdma_active: bool
+}
+
+impl MMU {
+    pub fn init(&mut self) {
+        self.ram[0x04] = 0x1E;
+        self.ram[0x05] = 0x00;
+        self.ram[0x06] = 0x00;
+        self.ram[0x07] = 0xF8;
+        self.ram[0x0F] = 0xE1;
+        self.ram[0x10] = 0x80;
+        self.ram[0x11] = 0xBF;
+        self.ram[0x12] = 0xF3;
+        self.ram[0x14] = 0xBF;
+        self.ram[0x16] = 0x3F;
+        self.ram[0x17] = 0x00;
+        self.ram[0x19] = 0xBF;
+        self.ram[0x1A] = 0x7F;
+        self.ram[0x1B] = 0xFF;
+        self.ram[0x1C] = 0x9F;
+        self.ram[0x1E] = 0xBF;
+        self.ram[0x20] = 0xFF;
+        self.ram[0x21] = 0x00;
+        self.ram[0x22] = 0x00;
+        self.ram[0x23] = 0xBF;
+        self.ram[0x24] = 0x77;
+        self.ram[0x25] = 0xF3;
+        self.ram[0x26] = 0xF1;
+        self.ram[0x40] = 0x91;
+        self.ram[0x41] = 0x85;
+        self.ram[0x42] = 0x00;
+        self.ram[0x43] = 0x00;
+        self.ram[0x45] = 0x00;
+        self.ram[0x47] = 0xFC;
+        self.ram[0x48] = 0xFF;
+        self.ram[0x49] = 0xFF;
+        self.ram[0x4A] = 0x00;
+        self.ram[0x4B] = 0x00;
+        self.ram[0xFF] = 0x00;
+
+        self.WRAMBank = 1;
     }
 
-    impl MMU {
-        pub fn rb(&mut self, addr: MemoryAddr, pc: u16) -> u8 {
-            match addr & 0xF000 {
-                // BIOS (256b)/ROM0
-                0x0000 => {
-                    if self.inbios {
-                        if addr < 0x0100 {
-                            return BIOS[addr as usize];
-                        } else if pc == 0x0100 {
-                            self.inbios = false;
-                        }
+    pub fn new(filename: String, timer: &Timer, input: &mut Input, speed: &mut Speed) -> MMU {
+        let cart = Cart::new(filename);
+        cgb = true;
+         return MMU {
+             cart,
+             timer,
+             input,
+             speed,
+             cgb,
+             ram: [u8; 0x100],
+             vram: [u8; 0x4000],
+             vram_bank: 0,
+             wram: [u8; 0x9000],
+             wram_bank: 0,
+             oam: [u8; 0x100],
+             hdma_len: 0,
+             hdma_active: false
+         }
+    }
+
+    pub fn write_upper_ram(&mut self, addr: MemoryAddr, value: u8) {
+        match addr {
+            0xFEA0..0xFEFF => {
+                if value == 0x81 {
+                    f(mem.ReadHighRam(0xFF01))
+                }
+            },
+            0xFF10..=0xFF26 => {} // Sound,
+            0xFF30..=0xFF3F => {} // WaveForm
+            0xFF02 => {
+                // Serial transfer control
+            }
+            DIV => {
+                self.timer.reset_timer();
+                // TODO Need to rest divider
+                self.ram[DIV-0xFF00] = 0
+            },
+            TIMA => {
+                self.ram[TIMA-0xFF00] = value;
+            },
+            TMA => {
+                self.ram[TMA-0xFF00] = value;
+            },
+            TAC => {
+                let current_freq = self.timer.get_clock_freq();
+                self.ram[TAC-0xFF00] = value | 0xF8;
+                let new_freq = self.timer.get_clock_freq();
+                if current_freq != new_freq {
+                    self.timer.reset_timer();
+                }
+            },
+            0xFF41 => {
+                self.ram[0x41] = value | 0x80;
+            },
+            0xFF44 => {
+                self.ram[0x44] = 0
+            },
+            0xFF46 => {
+                self.dma_transfer(value);
+            },
+            0xFF4D => {
+                if self.cgb {
+                    self.speed.prepare = bits.Test(value, 0)
+                }
+            },
+            0xFF4F => {
+                if self.cgb && !self.hdma_active {
+                    self.vram_bank = value & 0x1;
+                }
+            },
+            0xFF55 => {
+                if self.cgb {
+                    self.dma_transfer(value);
+                }
+            },
+            0xFF68 => {
+                if self.cgb {
+                    // BG palette index
+                }
+            },
+            0xFF69 => {
+                if self.cgb {
+                    // BG Palette data
+                }
+            },
+            0xFF6A => {
+                if self.cgb {
+                    // Sprite Palette index
+                }
+            },
+            0xFF6B => {
+                if self.cgb {
+                    // Sprite Palette data
+                }
+            },
+            0xFF70 => {
+                if self.cgb {
+                    self.wram_bank = value & 0x7;
+                    if self.wram_bank == 0 {
+                        self.wram_bank = 1
                     }
-                    return self.rom[addr as usize];
-                }
-
-                // ROM0
-                0x1000 | 0x2000 | 0x3000 => {
-                    return self.rom[addr as usize];
-                }
-
-                // ROM1 (unbanked) (16k)
-                0x4000 | 0x5000 | 0x6000 | 0x7000 => {
-                    return self.rom[addr as usize];
-                }
-
-                // Graphics: VRAM (8k)
-                0x8000 | 0x9000 => {
-                    // return GPU.vram
-                    return self.wram[(addr & 0x1FFF) as usize];
-                }
-
-                // External RAM (8k)
-                0xA000 | 0xB000 => {
-                    return self.eram[(addr & 0x1FFF) as usize];
-                }
-
-                // Working RAM (8k)
-                0xC000 | 0xD000 => {
-                    return self.wram[(addr & 0x1FFF) as usize];
-                }
-
-                // Working RAM shadow
-                0xE000 => {
-                    return self.wram[(addr & 0x1FFF) as usize];
-                }
-                // Working RAM shadow, I/O, Zero-page RAM
-                0xF000 => {
-                    match addr & 0x0F00 {
-                        // Working RAM shadow
-                        0x000 | 0x100 | 0x200 | 0x300 | 0x400 | 0x500 | 0x600 | 0x700 |
-                        0x800 | 0x900 | 0xA00 | 0xB00 | 0xC00 | 0xD00 => {
-                            return self.wram[(addr & 0x1FFF) as usize];
-                        }
-
-                        // Graphics: object attribute memory
-                        // OAM is 160 bytes, remaining bytes read as 0
-                        0xE00 => {
-                            if addr < 0xFEA0 {
-                                // GPU.ram
-                                return self.rom[(addr & 0xFF) as usize];
-                            } else {
-                                return 0;
-                            }
-                        }
-
-                        0xF00 => {
-                            if addr >= 0xFF80 {
-                                return self.zram[(addr & 0x7F) as usize];
-                            } else {
-                                // I/O control handling
-                                // Currently unhandled
-                                return 0;
-                            }
-                        }
-                        _ => {
-                            return 0
-                        }
-                    }
-                }
-                _ => {
-                    return 0
-                }
+                }            },
+            _ => {
+                self.ram[addr - 0xFF00] = value;
             }
         }
-        pub fn wb(&mut self, addr: MemoryAddr, value: u8) {
-            match addr&0xF000 {
-                // ROM bank 0
-                0x0000 => {
-                    if self.inbios && addr < 0x0100 {
-                        return;
-                    }
-                }
-                // fall through
-                0x1000 | 0x2000 | 0x3000 => {
-                    return;
-                }
+    }
 
-                // ROM bank 1
-                 0x4000 | 0x5000 |0x6000 | 0x7000 => {
-                     return;
-                 }
-
-                // VRAM
-                0x8000 | 0x9000 => {
-//                    GPU._vram[addr & 0x1FFF] = val;
-//                    GPU.updatetile(addr & 0x1FFF, val);
-                    return;
-                }
-
-                // External RAM
-                0xA000 |  0xB000 => {
-                    self.eram[(addr & 0x1FFF) as usize] = value;
-                }
-
-                // Work RAM and echo
-                0xC000 | 0xD000 | 0xE000 => {
-                    self.wram[(addr & 0x1FFF) as usize] = value;
-                }
-
-                // Everything else
-                 0xF000 => {
-                     match addr & 0x0F00 {
-                         // Echo RAM
-                         0x000| 0x100| 0x200| 0x300 |
-                         0x400| 0x500| 0x600| 0x700 |
-                         0x800| 0x900| 0xA00| 0xB00 |
-                         0xC00| 0xD00 => {
-                             self.wram[(addr & 0x1FFF) as usize] = value;
-                             return;
-                         }
-
-                         // OAM
-                          0xE00 => {
-                              if ((addr & 0xFF) < 0xA0) {
-//                                  GPU._oam[addr & 0xFF] = val;
-                              }
-//                              GPU.updateoam(addr, val);
-                              return;
-                          }
-
-                         // Zeropage RAM, I/O
-                         0xF00 => {
-                             if addr > 0xFF7F {
-                                 self.zram[(addr & 0x7F) as usize] = value;
-                             } else {
-//                                 switch(addr & 0xF0)
-                                 return;
-                             }
-                         }
-                         _ => {
-                             return;
-                         }
-                     }
-                     return;
-                 }
-                _ => {
-                    return;
-                }
+    pub fn write(&mut self, addr: MemoryAddr, value: u8) {
+        match addr {
+            0..0x8000 => {
+                self.cart.write_rom(addr, value);
+            }
+            0x8000..0xA000 => {
+                let offset = (self.vram_bank as u16) * 0x2000;
+                self.vram[addr-0x8000+offset] = value
+            }
+            0xA000..0xC000 => {
+                self.cart.write_ram(addr, value);
+            }
+            0xC000..0xD000 => {
+                self.wram[addr-0xC000] = value;
+            }
+            0xD000..0xE000 => {
+                self.wram[(addr-0xC000)+((self.wram_bankas as u16)*0x1000)] = value
+            }
+            0xE000..0xFE00 => {
+                // TODO: echo RAM
+                //mem.Write(address-0x2000, value)
+            }
+            0xFE00..0xFEA0 => {
+                self.oam[addr - 0xFE00] = value
+            }
+            0xFEA0..0xFF00 => {
+                // Not usable
+            }
+            _ => {
+                self.write_upper_ram(addr, value);
             }
         }
-        pub fn rw(&mut self, addr: MemoryAddr, pc: u16) -> u16{
-            return (self.rb(addr,pc) as u16) + (self.rb(addr+1, pc) as u16) << 8;
-        }
-        pub fn ww(&mut self, addr: MemoryAddr, value: u16) {
-            self.wb(addr, (value&255) as u8);
-            self.wb(addr+1, (value >> 8) as u8);
-        }
+    }
 
-        pub fn load_file(&mut self, filename: &str) {
-            self.rom = fs::read(filename).expect("Unable to read file");
+    pub fn read(&mut self, addr: MemoryAddr) -> u8 {
+        match addr  {
+            // BIOS (256b)/ROM0
+            0x0000..0x8000=> {
+                return self.cart.read(addr);
+            }
+            // ROM0
+            0x8000..0xA000 => {
+                let offset = (mem.vram_bank as u16) * 0x2000;
+                return self.vram[addr-0x8000 + offset];
+            }
+
+            // External RAM (8k)
+            0xA000..0xC000 => {
+                return self.cart.read(addr);
+            }
+
+            // Working RAM (8k)
+            0xC000..0xD000 => {
+                return self.wram[(addr - 0xC000)];
+            }
+            // Working RAM shadow
+            0xD000..0xE000 => {
+                return self.wram[(addr - 0xC000) + (self.wram_bank as u16 * 0x1000)];
+            }
+            // Working RAM shadow, I/O, Zero-page RAM
+            0xE000..0xFE00 => {
+                // TODO: re-enable echo RAM?
+                return 0xFF;
+            }
+            0xFE00..0xFEA0 => {
+                return self.oam[addr - 0xFE00];
+            }
+            0xFEA0..0xFF00 => {
+                return 0xFF;
+            }
+            _ => {
+                return self.read_upper_ram(addr)
+            }
         }
+    }
+
+    pub fn read_upper_ram(&mut self, addr: MemoryAddr) -> u8 {
+        match addr {
+            0xFF00 => {
+                self.input.joypad_value(self.ram[0x00]);
+            },
+            0xFF10..=0xFF26 => {
+                // TODO Read Sound
+            },
+            0xFF30..=0xFF3F => {}, // TODO read wave form
+            0xFF0F => return self.ram[0x0F] | 0xE0,
+            0xFF72..=0xFF77 => return 0,
+            0xFF68 => {
+                if self.cgb {
+                    // Read BG Palette index
+                }
+                return 0;
+            }
+            0xFF69 => {
+                if self.cgb {
+                    // Read BG Palette data
+                }
+                return 0;
+            }
+            0xFF6A => {
+                if self.cgb {
+                    // read Sprite index
+                }
+                return 0
+            }
+            0xFF6B => {
+                if self.cgb {
+                    // read Sprite
+                }
+                return 0
+            }
+            0xFF4D =>{
+                self.speed.prepare = test(value, 0)
+            },
+            0xFF4F => return self.vram_bank,
+            0xFF70 => return self.wram_bank,
+            _=> return self.ram[addr-0xFF00]
+        }
+        return 0
     }
 }

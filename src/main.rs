@@ -1,7 +1,4 @@
 use pixel_canvas::{input::MouseState, Canvas, Color};
-use GameboyEmulator::ops;
-use GameboyEmulator::Memory;
-use GameboyEmulator::CPU;
 
 fn main() {
     let r1: u8 = 250;
@@ -12,7 +9,7 @@ fn main() {
     // handler to build interactive art. Input handlers for common use are
     // provided.
     let canvas = Canvas::new(512, 512)
-        .title("Tile")
+        .title("Gameboy")
         .state(MouseState::new())
         .input(MouseState::handle_input);
     // The canvas will render for you at up to 60fps.
