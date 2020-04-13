@@ -1,5 +1,6 @@
 use crate::cpu::Z80;
 use crate::gameboy::Gameboy;
+use crate::cb_ops;
 
 // OPCODE_CYCLES is the number of self.cpu cycles for each normal opcode.
 pub(crate) const OPCODE_CYCLES: [u8; 256] = [
@@ -1218,7 +1219,7 @@ impl Gameboy {
             0xCB => {
                 // CB
                 let next_inst = self.cpu.pop_pc();
-                self.cpu.clock.t = self.cpu.clock.t.wrapping_add((CBOPCODE_CYCLES[next_inst] * 4) as usize);
+                self.cpu.clock.t = self.cpu.clock.t.wrapping_add((CBOPCODE_CYCLES[next_inst as usize] * 4) as usize);
                 self.find_cb_op(next_inst);
             },
             _ => {

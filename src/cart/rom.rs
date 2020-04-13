@@ -5,11 +5,14 @@ pub struct ROM {
 }
 
 impl ROM {
-
     pub(crate) fn new(data: Vec<u8>) -> ROM {
         return ROM {
             rom: data,
         }
+    }
+
+    pub fn new_as_bc(data: Vec<u8>) -> impl BankingController {
+        return ROM::new(data);
     }
 }
 

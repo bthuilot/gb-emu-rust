@@ -68,8 +68,8 @@ impl Cart {
 
         let flag = rom[0x147];
         match flag {
-            0x00 | 0x08 | 0x09 | 0x0B | 0x0C | 0x0D => banking_controller = ROM::new(rom),
-            0..=0x03 => banking_controller = MBC1::new(rom),
+            0x00 | 0x08 | 0x09 | 0x0B | 0x0C | 0x0D => banking_controller = ROM::new(rom) ,
+            0..=0x03 => banking_controller = MBC1::new(rom) ,
             0x03..=0x06 => banking_controller = MBC2::new(rom),
             0x06..=0x13 => banking_controller = MBC3::new(rom),
             0x13..=0x17 => banking_controller = MBC1::new(rom),

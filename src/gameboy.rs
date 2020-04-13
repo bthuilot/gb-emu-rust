@@ -19,16 +19,18 @@ pub struct Timer {
 
 impl Timer {
 
+
+    // TODO Fix Clock
     pub fn is_clock_enabled(&self) -> bool {
         return test(self.mmu.rb(TAC), 2)
     }
 
     pub fn get_clock_freq(&self) -> u8 {
-        return self.mmu.rb(TAC) & 0x3
+        return self.mmu.read(TAC) & 0x3
     }
 
     pub fn reset_timer(&mut self) {
-        self.timer.value = 0;
+        self.value = 0;
     }
 }
 
@@ -109,7 +111,7 @@ impl Gameboy {
             out.push_str(format!("{:2x}", y).as_str());
             let mut x: u16 = 0;
             while x < 0x20 {
-                out.push_str(format!("{:2x}", self.memory.read(0x9800.wrapping_add(y*0x20).wrapping_add(x))).as_str());
+                out.push_str(format!("{:2x}", self.memory.read(0x9800_u16.wrapping_add(y*0x20).wrapping_add(x))).as_str());
                 x += 1;
             }
             out.push_str("\n");
