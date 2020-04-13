@@ -32,8 +32,8 @@ impl MBC1 {
 impl BankingController for MBC1 {
     fn read(&self, address: u16) -> u8 {
        return match address {
-            0..0x4000 => self.rom[address],
-            0x4000..0x8000 => self.rom[(address-0x4000) as u32 + (self.rom_bank*0x4000)],
+            0..=0x3FFF => self.rom[address],
+            0x4000..=0x7FFF => self.rom[(address-0x4000) as u32 + (self.rom_bank*0x4000)],
             _ => self.ram[(0x2000*self.ram_bank)+ (address-0xA000) as u32],
         }
 
@@ -41,18 +41,18 @@ impl BankingController for MBC1 {
 
     fn write_rom(&mut self, address: u16, value: u8) {
         match address {
-            0..0x2000 => {
+            0..=0x1FFF => {
                 if value&0xF == 0xA {
                     self.ram_enabled = true;
                 } else if value&0xF == 0x0 {
                     self.ram_enabled = false;
                 }
             },
-            0x2000..0x4000 => {
+            0x2000..=0x3FFF => {
                 self.rom_bank = (self.rom_bank & 0xe0) | (value&0x1f) as u32;
                 self.update_rom_bank();
             },
-            0x4000..0x6000 => {
+            0x4000..=0x5FFF => {
                 // ROM/RAM banking
                 if self.rom_banking {
                     self.rom_bank = (self.rom_bank & 0x1F) | (value&0xe0) as u32;
@@ -61,7 +61,7 @@ impl BankingController for MBC1 {
                     self.ram_bank = (value & 0x3) as u32;
                 }
             },
-            0x6000..0x8000 => {
+            0x6000..=0x7FFF => {
                 // ROM/RAM select mode
                 self.rom_banking = (value&0x1 == 0x00);
                 if self.rom_banking {

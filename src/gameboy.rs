@@ -1,10 +1,8 @@
 use crate::cpu::Z80;
-use crate::memory::MMU;
+use crate::memory::{MMU, DIV, TIMA, TMA, TAC};
 use crate::input::{Input, Button};
 use crate::speed::{CYCLES_FRAME, Speed};
 use crate::bit_functions::{test, set, reset};
-use std::ptr::null;
-use crate::ops::ops::find_op;
 
 
 
@@ -38,7 +36,7 @@ impl Timer {
 
 pub struct Gameboy {
     memory: &'static mut MMU,
-    cpu: &'static mut Z80,
+    pub cpu: &'static mut Z80,
 //    Sound  *apu.APU
 
     paused: bool,
@@ -58,20 +56,20 @@ pub struct Gameboy {
     // been fully rendered.
 //    PreparedData [ScreenWidth][ScreenHeight][3]uint8
 
-    interrupts_enabling: bool,
-    interrupts_on:       bool,
-    halted:             bool,
+    pub interrupts_enabling: bool,
+    pub interrupts_on:       bool,
+    pub halted:             bool,
 
     // Mask of the currenly pressed buttons.
     input: &'static mut Input,
 
     // Flag if the game is running in cgb mode. For this to be true the game
     // rom must support cgb mode and the option be true.
-    cgb_mode:       bool,
+    pub cgb_mode:       bool,
 //    BGPalette     *cgbPalette
 //    SpritePalette *cgbPalette
 
-    speed: &'static mut Speed,
+    pub speed: &'static mut Speed,
     current_speed: u8,
     prepare_speed: bool,
 }
@@ -83,19 +81,19 @@ impl Gameboy {
             return 0
         }
 
-        let cycle = 0;
+        let mut cycles = 0;
         while cycles < CYCLES_FRAME * (self.speed.current + 1) as usize {
             let mut cycles_op = 4;
             if !self.halted {
 //                if gb.Debug.OutputOpcodes {
 //                    LogOpcode(gb, false)
 //                }
-                cycles_op = self.cpu.execute_next_opcode();
+                cycles_op = self.execute_next_opcode();
             } else {
                 // TODO: This is incorrect
             }
             cycles += cycles_op;
-            // TODO update
+            // TODO update graphics
 //            gb.updateGraphics(cycles_op);
             self.update_timers(cycles_op);
             cycles += self.do_interrupts();
@@ -105,13 +103,13 @@ impl Gameboy {
 
     // BGMapString returns a string of the values in the background map.
     pub fn bg_map_string(&mut self) -> String {
-        out = String::new();
-        y: u16 = 0;
+        let mut out = String::new();
+        let mut y: u16 = 0;
         while y < 0x20 {
-            out.push_str(format!("{:2x}", y));
-            x: u16 = 0;
+            out.push_str(format!("{:2x}", y).as_str());
+            let mut x: u16 = 0;
             while x < 0x20 {
-                out.push_str(fomrat!("{:2x}", self.memory.rb(0x9800.wrapping_add(y*0x20).wrapping_add(x), self.cpu.pc)));
+                out.push_str(format!("{:2x}", self.memory.read(0x9800.wrapping_add(y*0x20).wrapping_add(x))).as_str());
                 x += 1;
             }
             out.push_str("\n");
@@ -136,12 +134,12 @@ impl Gameboy {
             let freq = self.get_clock_freq_count();
             while self.timer.value >= freq {
                 self.timer.value -= freq;
-                let tima = self.memory.read(TIMA, self.cpu.pc);
+                let tima = self.memory.read(TIMA);
                 if tima == 0xFF {
-                    gb.Memory.HighRAM[TIMA - 0xFF00] = self.memory.read(TMA, self.cpu.pc);
+                    self.memory.ram[TIMA - 0xFF00] = self.memory.read(TMA);
                     self.request_interrupt(2);
                 } else {
-                    gb.Memory.HighRAM[TIMA - 0xFF00] = tima + 1
+                    self.memory.ram[TIMA-0xFF00] = tima + 1;
                 }
             }
         }
@@ -170,12 +168,12 @@ impl Gameboy {
         self.cpu.divider += cycles;
         if self.cpu.divider >= 255 {
             self.cpu.divider -= 255;
-            gb.Memory.HighRAM[DIV-0xFF00]+=1
+            self.memory.ram[DIV-0xFF00] += 1
         }
     }
 
     pub fn request_interrupt(&mut self, interrupt: u8) {
-        let mut req = self.memory.ReadHighRam(0xFF0F);
+        let mut req = self.memory.read_upper_ram(0xFF0F);
         req = set(req, interrupt);
         self.memory.wb(0xFF0F, req)
     }
@@ -189,8 +187,8 @@ impl Gameboy {
         if !self.interrupts_on && self.halted {
             return 0;
         }
-        let req = self.memory.ReadHighRam(0xFF0F);
-        let enabled = self.memory.ReadHighRam(0xFFFF);
+        let req = self.memory.read_upper_ram(0xFF0F);
+        let enabled = self.memory.read_upper_ram(0xFFFF);
         if req > 0 {
             let mut i: u8 = 0;
             while i < 5 {
@@ -212,11 +210,11 @@ impl Gameboy {
         self.interrupts_on = false;
         self.halted = false;
 
-        let mut req = self.memory.ReadHighRam(0xFF0F);
+        let mut req = self.memory.read_upper_ram(0xFF0F);
         req = reset(req, interrupt);
-        self.memory.wb(0xFF0F, req);
+        self.memory.write(0xFF0F, req);
 
-        self.push_stack(self.cpu.pc);
+        self.cpu.push_stack(self.cpu.pc);
         self.cpu.pc = match interrupt {
             0 => 0x40,
             1 => 0x48,
@@ -228,32 +226,15 @@ impl Gameboy {
 
     }
 
-    // Push a 16 bit value onto the stack and decrement SP.
-    pub fn push_stack(&mut self, address: u16) {
-        let sp = self.cpu.sp.full();
-        self.memory.wb(sp.wrapping_sub(1), (address&0xFF00).wrapping_shr(8) as u8);
-        self.memory.wb(sp.wrapping_sub(2), (address&0xFF) as u8);
-        self.cpu.sp.set_full(sp.wrapping_sub(2));
-    }
-
-    // Pop the next 16 bit value off the stack and increment SP.
-    pub fn pop_stack(&mut self) -> u16 {
-        let sp = self.cpu.sp.full();
-        let low= self.memory.read(sp, self.cpu.pc) as u16;
-        let hi = (self.memory.read(sp + 1, self.cpu.pc) as u16).wrapping_shl(8);
-        self.cpu.sp.set_full(sp.wrapping_add(2));
-        return low | hi;
-    }
-
-    pub fn is_game_loaded(&mut self) -> bool {
+    pub fn is_game_loaded(&self) -> bool {
         return self.memory.cart.title.len() != 0 // TODO
     }
 
-    pub fn new(rom: string, options: Options) -> Gameboy {
+    pub fn new(rom: String, options: Options) -> Gameboy {
         let mut timer = Timer { value: 0 };
         let mut speed = Speed { current: 0, prepare: false};
         let mut input = Input{mask: 0};
-        let mut memory = MMU::new(rom, &timer, &mut input);
+        let mut memory = MMU::new(rom, &timer, &mut input, &mut speed);
         let mut cpu = Z80::new(&memory);
         cpu.init(options.cgb);
         return Gameboy {
@@ -265,7 +246,7 @@ impl Gameboy {
             interrupts_on: false,
             halted: false,
             input: &mut input,
-            cgb_mode: has_cgb,
+            cgb_mode: true,
             speed: &mut speed,
             current_speed: 0,
             prepare_speed: false

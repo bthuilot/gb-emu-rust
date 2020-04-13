@@ -5,11 +5,6 @@ pub struct ROM {
 }
 
 impl ROM {
-    fn update_rom_bank(&mut self) {
-        if self.rom_bank == 0x00 || self.rom_bank == 0x20 || self.rom_bank == 0x40 || self.rom_bank == 0x60 {
-            self.rom_bank += 1
-        }
-    }
 
     pub(crate) fn new(data: Vec<u8>) -> ROM {
         return ROM {
@@ -20,7 +15,7 @@ impl ROM {
 
 impl BankingController for ROM {
     fn read(&self, address: u16) -> u8 {
-        return self.rom[address];
+        return self.rom[address as usize];
     }
 
     fn write_rom(&mut self, address: u16, value: u8) {

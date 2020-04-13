@@ -1,14 +1,14 @@
 pub(crate) type Button = u8;
 use crate::bit_functions::{test};
 
-const A: button = 0;
-const B: button = 1;
-const SELECT: button = 2;
-const START: button = 3;
-const RIGHT: button = 4;
-const LEFT: button = 5;
-const UP: button = 6;
-const DOWN: button = 7;
+const A: Button = 0;
+const B: Button = 1;
+const SELECT: Button = 2;
+const START: Button = 3;
+const RIGHT: Button = 4;
+const LEFT: Button = 5;
+const UP: Button = 6;
+const DOWN: Button = 7;
 
 pub struct Input {
     pub mask: u8,

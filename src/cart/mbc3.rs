@@ -28,8 +28,8 @@ impl MBC3 {
             ram: Vec::new(),
             ram_bank: 0,
             ram_enabled: false,
-            clock: [u8; 0x10],
-            latched_clock: [u8; 0x10],
+            clock: [0; 0x10],
+            latched_clock: [0; 0x10],
             rom_banking: false,
             latched: false
         }
@@ -39,8 +39,8 @@ impl MBC3 {
 impl BankingController for MBC3 {
     fn read(&self, address: u16) -> u8 {
         return match address {
-            0..0x4000 => self.rom[address],
-            0x4000..0x8000 => self.rom[(address - 0x4000) as u32 + (self.rom_bank * 0x4000)],
+            0..=0x3FFF => self.rom[address],
+            0x4000..=0x7FFF => self.rom[(address - 0x4000) as u32 + (self.rom_bank * 0x4000)],
             _ => {
                 if self.ram_bank >= 0x4 {
                     if self.latched {
@@ -55,17 +55,17 @@ impl BankingController for MBC3 {
 
     fn write_rom(&mut self, address: u16, value: u8) {
         match address {
-            0..0x2000 => {
+            0..=0x1FFF => {
                 self.ram_enabled = (value & 0xA) != 0;
             },
-            0x2000..0x4000 => {
+            0x2000..=0x3FFF => {
                 self.rom_bank =  (value&0x7f) as u32;
                 self.update_rom_bank()
             },
-            0x4000..0x6000 => {
+            0x4000..=0x5FFF => {
                 self.ram_bank = (value) as u32;
             }
-            0x6000..0x8000 => {
+            0x6000..=0x7FFF => {
                 if value == 0x1 {
                     self.latched = false
                 } else if value == 0x0 {

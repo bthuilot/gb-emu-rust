@@ -28,8 +28,8 @@ impl MBC2 {
 impl BankingController for MBC2 {
     fn read(&self, address: u16) -> u8 {
         return match address {
-            0..0x4000 => self.rom[address],
-            0x4000..0x8000 => self.rom[(address-0x4000) as u32 + (self.rom_bank*0x4000)],
+            0..=0x3FFF => self.rom[address],
+            0x4000..=0x7FFF => self.rom[(address-0x4000) as u32 + (self.rom_bank*0x4000)],
             _ => self.ram[address-0xA000],
         }
 
@@ -37,7 +37,7 @@ impl BankingController for MBC2 {
 
     fn write_rom(&mut self, address: u16, value: u8) {
         match address {
-            0..0x2000 => {
+            0..=0x1FFF => {
                 if address&0x100 == 0 {
                     if value & 0xF == 0xA {
                         self.ram_enabled = true;
@@ -46,7 +46,7 @@ impl BankingController for MBC2 {
                     }
                 }
             },
-            0x2000..0x4000 => {
+            0x2000..=0x3FFF => {
                 if address&0x100 == 0x100 {
                     self.rom_bank = (self.rom_bank & 0xe0) | (value & 0x1f) as u32;
                     self.update_rom_bank();
