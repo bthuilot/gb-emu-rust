@@ -1,9 +1,8 @@
 use crate::cpu::Z80;
-use crate::gameboy::Timer;
 use crate::input::Input;
 use crate::speed::{Speed};
 use crate::cart::controller::Cart;
-use crate::bit_functions::{val, test};
+use crate::bit_functions::{val, test, b};
 
 // DIV is the divider register which is incremented periodically by
 // the Gameboy.
@@ -20,11 +19,23 @@ pub const TAC: u16 = 0xFF07;
 
 pub type MemoryAddr = u16;
 
+
+pub struct Timer {
+    pub value: usize,
+}
+
+impl Timer {
+    pub fn reset_timer(&mut self) {
+        self.value = 0;
+    }
+}
+
+
 pub struct MMU {
     pub cart: Cart,
-    timer: &'static Timer,
-    input: &'static mut Input,
-    speed: &'static mut Speed,
+    pub timer: Timer,
+    pub input: Input,
+    pub speed: Speed,
     cgb: bool,
     pub ram: [u8; 0x100],
     vram: [u8; 0x4000],
@@ -81,14 +92,20 @@ impl MMU {
         self.wram_bank = 1;
     }
 
-    pub fn new(filename: String, timer: &'static Timer, input: &'static mut Input, speed: &'static mut Speed) -> MMU {
-        let cart = Cart::new(filename);
+    pub fn new(filename: &str) -> MMU {
         let cgb = true;
          return MMU {
-             cart,
-             timer,
-             input,
-             speed,
+             cart: Cart::new(filename),
+             timer: Timer {
+                 value: 0
+             },
+             input: Input {
+                 mask: 0
+             },
+             speed : Speed {
+                 current: 0,
+                 prepare: false
+             },
              cgb,
              ram: [0; 0x100],
              vram: [0; 0x4000],
@@ -122,9 +139,9 @@ impl MMU {
                 self.ram[(TMA-0xFF00) as usize] = value;
             },
             TAC => {
-                let current_freq = self.timer.get_clock_freq();
+                let current_freq = self.get_clock_freq();
                 self.ram[(TAC-0xFF00) as usize] = value | 0xF8;
-                let new_freq = self.timer.get_clock_freq();
+                let new_freq = self.get_clock_freq();
                 if current_freq != new_freq {
                     self.timer.reset_timer();
                 }
@@ -150,7 +167,7 @@ impl MMU {
             },
             0xFF55 => {
                 if self.cgb {
-                    self.dma_transfer(value);
+                    self.cgb_dma_transfer(value);
                 }
             },
             0xFF68 => {
@@ -220,7 +237,7 @@ impl MMU {
         }
     }
 
-    pub fn read(&mut self, addr: MemoryAddr) -> u8 {
+    pub fn read(&self, addr: MemoryAddr) -> u8 {
         match addr  {
             // BIOS (256b)/ROM0
             0x0000..=0x7FFF=> {
@@ -262,10 +279,10 @@ impl MMU {
         }
     }
 
-    pub fn read_upper_ram(&mut self, addr: MemoryAddr) -> u8 {
+    pub fn read_upper_ram(&self, addr: MemoryAddr) -> u8 {
         match addr {
             0xFF00 => {
-                self.input.joypad_value(self.ram[(0x00) as usize]);
+                return self.input.joypad_value(self.ram[(0x00) as usize]);
             },
             0xFF10..=0xFF26 => {
                 // TODO Read Sound
@@ -298,12 +315,82 @@ impl MMU {
                 return 0
             }
             0xFF4D =>{
-                self.speed.prepare = test(addr as u8, 0)
+                return self.speed.current<<7 | b(self.speed.prepare)
             },
             0xFF4F => return self.vram_bank,
             0xFF70 => return self.wram_bank,
             _=> return self.ram[(addr-0xFF00) as usize]
         }
         return 0
+    }
+
+    pub fn is_clock_enabled(&self) -> bool {
+        return test(self.read(TAC), 2)
+    }
+
+    pub fn get_clock_freq(&self) -> u8 {
+        return self.read(TAC) & 0x3
+    }
+
+    pub fn cgb_dma_transfer(&mut self, value: u8) {
+        if self.hdma_active && val(value, 7) == 0 {
+            self.hdma_active = false;
+            self.ram[0x55_usize] |= 0x80; // Set bit 7
+            return
+        }
+
+        let mut len = (((value as u16) & 0x7F) + 1) * 0x10;
+        if value >> 7 == 0 {
+            self.hdma_len -= 1;
+            self.transfer(len);
+        } else {
+            self.ram[0x55 as usize] = 0xFF_u8;
+            self.hdma_active = false;
+        }
+    }
+
+    pub fn dma_transfer(&mut self, val: u8) {
+        // TODO: This may need to be done instead of CPU ticks
+        let address = (val as u16) << 8;// (data * 100)
+
+        let mut i = 0_16;
+        while i < 0xA0 {
+            // TODO: Check this doesn't prevent
+            self.write(0xFE00+i, self.read(address+i));
+            i += 1;
+        }
+    }
+
+    pub fn hdma_transfer(&mut self) {
+        if self.hdma_active {
+            self.transfer(0x10);
+            if self.hdma_len > 0 {
+                self.hdma_len -= 1;
+                self.ram[0x55_usize] = self.hdma_len;
+            } else {
+                self.ram[0x55_usize] = 0xFF;
+                self.hdma_active = false;
+            }
+        }
+    }
+
+    fn transfer(&mut self, len: u16) {
+        let mut source = ((self.ram[0x51_usize] as u16)<<8 | (self.ram[0x52_usize]) as u16) & 0xFFF0_u16;
+        let mut destination = ((self.ram[0x53_usize] as u16)<<8 | (self.ram[0x54_usize] as u16)) & 0x1FF0;
+        destination += 0x8000;
+
+        // Transfer the data from the source to the destination
+        let mut i = 0_u16;
+        while i < len {
+            self.write(destination, self.read(source));
+            destination += 1;
+            source += 1;
+            i += 1;
+        }
+
+        self.ram[0x51] = (source >> 8) as u8;
+        self.ram[0x52] = (source & 0xFF) as u8;
+        self.ram[0x53] = (destination >> 8) as u8;
+        self.ram[0x54] = (destination & 0xF0) as u8;
     }
 }

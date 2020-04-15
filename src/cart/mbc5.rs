@@ -25,14 +25,18 @@ impl MBC5 {
             ram_enabled: false,
         }
     }
+
+    pub fn new_as_bc(data: Vec<u8>) -> impl BankingController {
+        return MBC5::new(data);
+    }
 }
 
 impl BankingController for MBC5 {
     fn read(&self, address: u16) -> u8 {
         return match address {
-            0..=0x3FFF => self.rom[address],
-            0x4000..=0x7FFF => self.rom[(address-0x4000) as u32 + (self.rom_bank*0x4000)],
-            _ => self.ram[(0x2000*self.ram_bank)+ (address-0xA000) as u32],
+            0..=0x3FFF => self.rom[address as usize],
+            0x4000..=0x7FFF => self.rom[((address-0x4000) as u32 + (self.rom_bank*0x4000)) as usize],
+            _ => self.ram[((0x2000*self.ram_bank)+ (address-0xA000) as u32) as usize],
         }
 
     }
@@ -61,7 +65,7 @@ impl BankingController for MBC5 {
 
     fn write_ram(&mut self, address: u16, value: u8) {
         if self.ram_enabled {
-            self.ram[(0x2000*self.ram_bank)+(address-0xA000) as u32] = value
+            self.ram[((0x2000*self.ram_bank)+(address-0xA000) as u32) as usize] = value
         }
     }
 

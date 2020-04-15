@@ -11,8 +11,8 @@ const GB_MODE: u8 = 1;
 const CBG_MODE: u8 = 2;
 const BOTH_MODE: u8 = 3;
 
-pub(crate) struct Cart {
-    banking_controller: &'static Box<dyn BankingController>,
+pub struct Cart {
+    banking_controller: Box<dyn BankingController>,
     pub(crate) title: String,
     filename: String,
     mode: u8,
@@ -39,15 +39,19 @@ impl Cart {
 
     pub fn load_save_data(&mut self) {
         let mut save_data: Vec<u8> = Vec::new();
-        let mut file = File::open(self.filename.as_str() + ".sav")?;
-        file.read_to_end(&mut save_data)?;
+        let mut file = self.filename.clone();
+        file.push_str(".sav");
+        let mut file = File::open(file.as_str()).expect("Unable to open file");
+        file.read_to_end(&mut save_data).expect("");
         self.banking_controller.load_save_data(save_data);
     }
 
     pub fn save(&self) {
         let data = self.banking_controller.get_save_date();
         if data.len() > 0 {
-            let mut file = File::open(self.filename.as_str() + ".sav")?;
+            let mut file = self.filename.clone();
+            file.push_str(".sav");
+            let mut file = File::open(file.as_str()).expect("Unable to open file");
             let result = file.write(data.as_slice());
             if result.is_err() {
                 // TODO Handle this
@@ -55,43 +59,44 @@ impl Cart {
         }
     }
 
-    pub fn new(&mut filename: String) -> Cart{
-        let rom = Cart::read_rom_data(filename);
-        let mut mode: u8;
+    fn get_banking_controller(flag: u8, rom: Vec<u8>) -> Box<dyn  BankingController> {
+        match flag {
+            0x00 | 0x08 | 0x09 | 0x0B | 0x0C | 0x0D => return Box::new(ROM::new_as_bc(rom)),
+            0..=0x03 => return Box::new(MBC1::new_as_bc(rom)),
+            0x03..=0x06 => return Box::new(MBC2::new_as_bc(rom)),
+            0x06..=0x13 => return Box::new(MBC3::new_as_bc(rom)),
+            0x13..=0x17 => return Box::new(MBC1::new_as_bc(rom)),
+            0x17..=0x1F => return Box::new(MBC5::new_as_bc(rom)),
+            _ => return Box::new(MBC1::new_as_bc(rom)),
+        }
+    }
+
+    pub fn new(filename: &str) -> Cart{
+        let rom = Cart::read_rom_data(String::from(filename));
+        let mode: u8;
         match rom[0x0143] {
             0x80 => mode = BOTH_MODE,
             0xC0 => mode = CBG_MODE,
             _ => mode = GB_MODE,
         }
 
-        let banking_controller: dyn BankingController;
-
         let flag = rom[0x147];
-        match flag {
-            0x00 | 0x08 | 0x09 | 0x0B | 0x0C | 0x0D => banking_controller = ROM::new(rom) ,
-            0..=0x03 => banking_controller = MBC1::new(rom) ,
-            0x03..=0x06 => banking_controller = MBC2::new(rom),
-            0x06..=0x13 => banking_controller = MBC3::new(rom),
-            0x13..=0x17 => banking_controller = MBC1::new(rom),
-            0x17..=0x1F => banking_controller = MBC5::new(rom),
-            _ => banking_controller = MBC1::new(rom),
-        }
-
-
+        let banking_controller = Cart::get_banking_controller(flag, rom.clone());
 
         let mut title = String::new();
-        let mut i: u16 = 0x134;
+        let mut i: usize = 0x134;
         while i < 0x142 {
-            let chr = &rom[i] as char;
-            if chr != (0x00 as char) {
-                title.push(chr);
+            let chr = &rom[i as usize];
+            if *chr != (0x00) {
+                title.push((*chr) as char);
             }
             i+=1;
         }
-        let cart = Cart {
+
+        let mut cart = Cart {
             banking_controller,
             title: String::from(title.trim()),
-            filename,
+            filename: String::from(filename),
             mode,
         };
         match flag {
@@ -115,10 +120,3 @@ impl Cart {
         return contents;
     }
 }
-
-pub fn new_cart(filename: String) -> Cart{
-
-}
-
-
-

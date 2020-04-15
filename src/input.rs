@@ -15,7 +15,7 @@ pub struct Input {
 }
 
 impl Input {
-    pub fn joypad_value(&mut self, current: u8) -> u8 {
+    pub fn joypad_value(&self, current: u8) -> u8 {
         let mut i: u8 = 0xF;
         if test(current, 4) {
             i = self.mask & 0xF;

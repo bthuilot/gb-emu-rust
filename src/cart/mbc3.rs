@@ -34,21 +34,25 @@ impl MBC3 {
             latched: false
         }
     }
+
+    pub fn new_as_bc(data: Vec<u8>) -> impl BankingController {
+        return MBC3::new(data);
+    }
 }
 
 impl BankingController for MBC3 {
     fn read(&self, address: u16) -> u8 {
         return match address {
-            0..=0x3FFF => self.rom[address],
-            0x4000..=0x7FFF => self.rom[(address - 0x4000) as u32 + (self.rom_bank * 0x4000)],
+            0..=0x3FFF => self.rom[address as usize],
+            0x4000..=0x7FFF => self.rom[((address - 0x4000) as u32 + (self.rom_bank * 0x4000)) as usize],
             _ => {
                 if self.ram_bank >= 0x4 {
                     if self.latched {
-                        return self.latched_clock[self.ram_bank]
+                        return self.latched_clock[self.ram_bank as usize]
                     }
-                    return self.clock[self.ram_bank]
+                    return self.clock[self.ram_bank as usize]
                 }
-                return self.ram[(0x2000 * self.ram_bank) + (address - 0xA000) as u32]
+                return self.ram[((0x2000 * self.ram_bank) + (address - 0xA000) as u32) as usize]
             }
         }
     }
@@ -80,9 +84,9 @@ impl BankingController for MBC3 {
     fn write_ram(&mut self, address: u16, value: u8) {
         if self.ram_enabled {
             if self.ram_bank >= 0x4 {
-                self.clock[self.ram_bank] = value
+                self.clock[self.ram_bank as usize] = value
             } else {
-                self.ram[(0x2000*self.ram_bank)+ (address-0xA000) as u32] = value
+                self.ram[((0x2000*self.ram_bank)+ (address-0xA000) as u32) as usize] = value
             }
         }
     }

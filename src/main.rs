@@ -3,7 +3,6 @@ use pixel_canvas::{input::MouseState, Canvas, Color};
 fn main() {
     let r1: u8 = 250;
     let r2: u8 = 23;
-    println!("{}", r1 + r2);
 
     // Configure the window that you want to draw in. You can add an event
     // handler to build interactive art. Input handlers for common use are
