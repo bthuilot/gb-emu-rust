@@ -3,6 +3,7 @@ use crate::memory::{MMU, DIV, TIMA, TMA, TAC, MemoryAddr};
 use crate::input::{Input, Button};
 use crate::speed::{CYCLES_FRAME, Speed};
 use crate::bit_functions::{test, set, reset};
+use crate::display::{SCREEN_HEIGHT, SCREEN_WIDTH}
 
 pub struct Options {
     pub sound: bool,
@@ -15,19 +16,16 @@ pub struct Gameboy {
 //    Sound  *apu.APU
 
     paused: bool,
-    // Matrix of pixel data which is used while the screen is rendering. When a
-    // frame has been completed, this data is copied into the PreparedData matrix.
-//    screenData [ScreenWidth][ScreenHeight][3]uint8
-//    bgPriority [ScreenWidth][ScreenHeight]bool
+
+    pub screen_data: [[[u8; 3]; SCREEN_HEIGHT]; SCREEN_WIDTH],
+    pub bg_priority: [[bool; SCREEN_HEIGHT]; SCREEN_WIDTH],
 
     // Track colour of tiles in scanline for priority management.
-//    tileScanline    [ScreenWidth]uint8
-//    scanlineCounter int
-//    screenCleared   bool
+    pub tile_scanline: [u8; SCREEN_WIDTH],
+    pub scanline_counter: isize,
+    pub screen_cleared: bool,
 
-    // PreparedData is a matrix of screen pixel data for a single frame which has
-    // been fully rendered.
-//    PreparedData [ScreenWidth][ScreenHeight][3]uint8
+    pub prepared_screen: [[[u8; 3]; SCREEN_HEIGHT]; SCREEN_WIDTH],
 
     pub interrupts_enabling: bool,
     pub interrupts_on:       bool,
@@ -59,8 +57,7 @@ impl Gameboy {
                 // TODO: This is incorrect
             }
             cycles += cycles_op;
-            // TODO update graphics
-//            gb.updateGraphics(cycles_op);
+            self.update_graphics(cycles_op as isize);
             self.update_timers(cycles_op);
             cycles += self.do_interrupts();
         }
