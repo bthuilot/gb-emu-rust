@@ -138,16 +138,16 @@ impl Gameboy {
     fn transfer(&mut self, len: u16) {
         let mut source = ((self.memory.ram[0x51_usize] as u16)<<8 | (self.memory.ram[0x52_usize]) as u16) & 0xFFF0_u16;
         let mut destination = ((self.memory.ram[0x53_usize] as u16)<<8 | (self.memory.ram[0x54_usize] as u16)) & 0x1FF0;
-        destination += 0x8000;
+        destination = destination.wrapping_add(0x8000);
 
         // Transfer the data from the source to the destination
         let mut i = 0_u16;
         while i < len {
             let val = self.read(source);
             self.write(destination, val);
-            destination += 1;
-            source += 1;
-            i += 1;
+            destination = destination.wrapping_add(1);
+            source = source.wrapping_add(1);
+            i = i.wrapping_add(1);
         }
 
         self.memory.ram[0x51] = (source >> 8) as u8;
@@ -165,7 +165,7 @@ impl Gameboy {
 
         let mut len = (((value as u16) & 0x7F) + 1) * 0x10;
         if value >> 7 == 0 {
-            self.memory.hdma_len -= 1;
+            self.memory.hdma_len = self.memory.hdma_len.wrapping_sub(1);
             self.transfer(len);
         } else {
             self.memory.ram[0x55 as usize] = 0xFF_u8;
@@ -180,9 +180,9 @@ impl Gameboy {
         let mut i = 0_16;
         while i < 0xA0 {
             // TODO: Check this doesn't prevent
-            let val = self.read(address + i);
-            self.write(0xFE00+i, val);
-            i += 1;
+            let val = self.read(address.wrapping_add(i));
+            self.write(0xFE00_u16.wrapping_add(i), val);
+            i = i.wrapping_add(1);
         }
     }
 
@@ -190,7 +190,7 @@ impl Gameboy {
         if self.memory.hdma_active {
             self.transfer(0x10);
             if self.memory.hdma_len > 0 {
-                self.memory.hdma_len -= 1;
+                self.memory.hdma_len = self.memory.hdma_len.wrapping_sub(1);
                 self.memory.ram[0x55_usize] = self.memory.hdma_len;
             } else {
                 self.memory.ram[0x55_usize] = 0xFF;
@@ -206,6 +206,7 @@ impl Gameboy {
             0xFF10..=0xFF26 => {} // Sound,
             0xFF30..=0xFF3F => {} // WaveForm
             0xFF02 => {
+                println!("Amybe?")
                 // Serial transfer control
             }
             DIV => {
@@ -280,7 +281,7 @@ impl Gameboy {
                 }
             },
             _ => {
-                self.memory.ram[(addr - 0xFF00) as usize] = value;
+                self.memory.ram[(addr.wrapping_sub(0xFF00)) as usize] = value;
             }
         }
     }
@@ -291,24 +292,24 @@ impl Gameboy {
                 self.memory.cart.write_rom(addr, value);
             }
             0x8000..=0x9FFF => {
-                let offset = (self.memory.vram_bank as u16) * 0x2000;
-                self.memory.vram[(addr-0x8000+offset) as usize] = value
+                let offset = (self.memory.vram_bank as u16).wrapping_mul(0x2000);
+                self.memory.vram[(addr.wrapping_sub(0x8000).wrapping_add(offset)) as usize] = value
             }
             0xA000..=0xBFFF => {
                 self.memory.cart.write_ram(addr, value);
             }
             0xC000..=0xCFFF => {
-                self.memory.wram[(addr-0xC000) as usize] = value;
+                self.memory.wram[(addr.wrapping_sub(0xC000)) as usize] = value;
             }
             0xD000..=0xDFFF => {
-                self.memory.wram[((addr-0xC000)+((self.memory.wram_bank as u16)*0x1000)) as usize] = value
+                self.memory.wram[addr.wrapping_sub(0xC000).wrapping_add((self.memory.wram_bank as u16).wrapping_mul(0x1000)) as usize] = value
             }
             0xE000..=0xFDFF => {
                 // TODO: echo RAM
                 //mem.Write(address-0x2000, value)
             }
             0xFE00..=0xFE9F => {
-                self.memory.oam[(addr - 0xFE00) as usize] = value
+                self.memory.oam[addr.wrapping_sub(0xFE00) as usize] = value
             }
             0xFEA0..=0xFEFF => {
                 // Not usable
@@ -327,8 +328,8 @@ impl Gameboy {
             }
             // ROM0
             0x8000..=0x9FFF => {
-                let offset = (self.memory.vram_bank as u16) * 0x2000;
-                return self.memory.vram[(addr-0x8000 + offset) as usize];
+                let offset = (self.memory.vram_bank as u16).wrapping_mul(0x2000);
+                return self.memory.vram[addr.wrapping_sub(0x8000).wrapping_add(offset) as usize];
             }
 
             // External RAM (8k)
@@ -338,7 +339,7 @@ impl Gameboy {
 
             // Working RAM (8k)
             0xC000..=0xCFFF => {
-                return self.memory.wram[((addr - 0xC000)) as usize];
+                return self.memory.wram[(addr.wrapping_sub(0xC000)) as usize];
             }
             // Working RAM shadow
             0xD000..=0xDFFF => {

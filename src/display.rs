@@ -1,15 +1,15 @@
 use crate::gameboy::Gameboy;
 use crate::bit_functions::{reset, set, test, val};
 
-pub struct Color {
+pub struct ColorPixel {
     pub r: u8,
     pub g: u8,
     pub b: u8,
 }
 
-impl Clone for Color {
+impl Clone for ColorPixel {
     fn clone(&self) -> Self {
-        return Color {
+        return ColorPixel {
             r: self.r,
             b: self.b,
             g: self.g
@@ -17,7 +17,7 @@ impl Clone for Color {
     }
 }
 
-impl Copy for Color {
+impl Copy for ColorPixel {
 
 }
 
@@ -42,6 +42,7 @@ impl Gameboy {
         self.set_lcd_status();
 
         if !self.is_lcd_enabled() {
+            println!("WHAUTBTUB");
             return
         }
 
@@ -50,7 +51,7 @@ impl Gameboy {
             self.memory.ram[0x44] += 1;
             if self.memory.ram[0x44] > 153 {
                 self.prepared_screen.clone_from_slice(&self.screen_data);
-                self.screen_data = [[Color { r: 255, g: 255, b:255 }; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize];
+                self.screen_data = [[ColorPixel { r: 255, g: 255, b:255 }; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize];
                 self.bg_priority = [[false; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize];
                 self.memory.ram[0x44] = 0;
             }
@@ -69,7 +70,7 @@ impl Gameboy {
 
         if !self.is_lcd_enabled() {
             self.clear_screen();
-
+            println!("Here");
             self.scanline_counter = 456;
             self.memory.ram[0x44] = 0;
             status &= 252;
@@ -145,12 +146,12 @@ impl Gameboy {
         }
     }
 
-    pub fn get_tile_settings(&self, lcd_control: u8, windowY: u8) -> TileSettings {
+    pub fn get_tile_settings(&self, lcd_control: u8, window_y: u8) -> TileSettings {
         let mut tile_data = 0x8800_u16;
         let mut unsigned = false;
         let mut using_window = false;
         if test(lcd_control, 5) {
-            if windowY < self.read(0xFF44) {
+            if window_y < self.read(0xFF44) {
                 using_window = true;
             }
         }
@@ -177,7 +178,7 @@ impl Gameboy {
         let scroll_y = self.read_upper_ram(0xFF42);
         let scroll_x = self.read_upper_ram(0xFF43);
         let window_y = self.read_upper_ram(0xFF4A);
-        let window_x = self.read_upper_ram(0xFF4B) as i32 - 7;
+        let window_x: u8 = self.read_upper_ram(0xFF4B).wrapping_sub(7);
 
         let settings = self.get_tile_settings(lcd_control, window_y);
         let y_pos = if !settings.using_window {scroll_y + scanline} else {scanline - window_y};
@@ -188,10 +189,10 @@ impl Gameboy {
 
         self.tile_scanline = [0; 160];
         for pixel in 0_u8..160_u8 {
-            let mut x_pos = if !settings.using_window && (pixel as i32) >= (window_x) {
-                (pixel as u16).wrapping_add(scroll_x as u16)
+            let mut x_pos: u8 = if !settings.using_window && (pixel) >= (window_x) {
+                (pixel).wrapping_add(scroll_x)
             } else {
-                (pixel as u16).wrapping_sub(window_x as u16)
+                (pixel).wrapping_sub(window_x )
             };
 
             let tile_col = (x_pos/8) as u16;
@@ -201,11 +202,11 @@ impl Gameboy {
             let mut tile_location = settings.tile_data;
             let tile_num: i16;
             if settings.unsigned {
-                tile_num = self.memory.vram[tile_address as usize - 0x8000_usize] as i16;
+                tile_num = self.memory.vram[tile_address.wrapping_sub(0x8000) as usize] as i16;
                 tile_location = tile_location.wrapping_add(tile_num.wrapping_mul(16) as u16);
             } else {
-                tile_num = (self.memory.vram[tile_address as usize - 0x8000_usize] as i8)as i16;
-                tile_location = (tile_location as i32).wrapping_add(((tile_num as i32) + 128_i32) *16) as u16;
+                tile_num = (self.memory.vram[tile_address.wrapping_sub(0x8000) as usize] as i8)as i16;
+                tile_location = (tile_location as i32).wrapping_add((tile_num.wrapping_add(128)).wrapping_mul(16) as i32) as u16;
             }
 
             let mut bank_offset = 0x8000_u16;
@@ -216,25 +217,25 @@ impl Gameboy {
             //    Bit 5    Horizontal Flip            (0=Normal, 1=Mirror horizontally)
             //    Bit 6    Vertical Flip              (0=Normal, 1=Mirror vertically)
             //    Bit 7    BG-to-OAM Priority         (0=Use OAM priority bit, 1=BG Priority)
-            let tile_attr = self.memory.vram[(tile_address - 0x6000) as usize];
+            let tile_attr = self.memory.vram[tile_address.wrapping_sub(0x6000) as usize];
             if self.cgb_mode && test(tile_attr, 3) {
                 bank_offset = 0x6000_u16;
             }
             let priority = test(tile_attr, 7);
             let line: u8;
             if self.cgb_mode && test(tile_attr, 6) {
-                line = ((7 - y_pos) % 8) * 2;
+                line = ((7_u8.wrapping_sub(y_pos)) % 8).wrapping_mul(2);
             } else {
-                line = (y_pos % 8) * 2;
+                line = (y_pos % 8).wrapping_mul(2);
             }
 
-            let data_1 = self.memory.vram[(tile_location + (line as u16) - bank_offset) as usize];
-            let data_2 = self.memory.vram[(tile_location + (line as u16) + 1 - bank_offset) as usize];
+            let data_1 = self.memory.vram[tile_location.wrapping_add(line as u16).wrapping_sub(bank_offset) as usize];
+            let data_2 = self.memory.vram[tile_location.wrapping_add(line as u16).wrapping_add(1).wrapping_sub(bank_offset) as usize];
 
             if self.cgb_mode && test(tile_attr, 5) {
                 x_pos = x_pos.wrapping_sub(7);
             }
-            let color_bit = ((((x_pos%8) as i8) -7) * -1 ) as u8;
+            let color_bit = ((x_pos%8) as i8).wrapping_sub(7).wrapping_mul(-1) as u8;
             let color_num = (val(data_2, color_bit) << 1) | val(data_1, color_bit);
             self.set_tile_pixel(pixel, scanline, tile_attr, color_num, palette, priority);
         }
@@ -253,7 +254,7 @@ impl Gameboy {
         self.tile_scanline[x as usize] = color_num;
     }
 
-    fn get_color(&self, color_num: u8, palette: u8) -> Color {
+    fn get_color(&self, color_num: u8, palette: u8) -> ColorPixel {
         let hi = color_num << 1 | 1;
         let lo = color_num << 1;
         let col = val(palette, hi) << 1 | val(palette, lo);
@@ -269,9 +270,9 @@ impl Gameboy {
         let mut minx: [i32; SCREEN_WIDTH as usize ] = [0_i32; SCREEN_WIDTH as usize];
         let mut line_sprites = 0;
         for sprite in 0_u16..40_u16 {
-            let index = sprite * 4;
-            let y_pos = self.read(0xFE00_u16 + index) as i32 - 16;
-            if scanline < y_pos || scanline >= (y_pos + y_size) {
+            let index = sprite.wrapping_mul(4);
+            let y_pos = (self.read(0xFE00_u16.wrapping_add(index)) as i32).wrapping_mul(16);
+            if scanline < y_pos || scanline >= y_pos.wrapping_add(y_size) {
                 continue
             }
 
@@ -280,9 +281,9 @@ impl Gameboy {
             }
 
             line_sprites += 1;
-            let x_pos = self.read(0xFE00 + index + 1) as i32 - 8;
-            let tile_location = self.read(0xFE00 + index + 2) as u16;
-            let attributes = self.read(0xFE00 + index + 3);
+            let x_pos = (self.read(0xFE00_u16.wrapping_add(index).wrapping_add(1)) as i32).wrapping_sub(8);
+            let tile_location = self.read(0xFE00_u16.wrapping_add(index).wrapping_add(2)) as u16;
+            let attributes = self.read(0xFE00_u16.wrapping_add(index).wrapping_add(3));
 
             let y_filp = test(attributes, 6);
             let x_flip = test(attributes, 5);
@@ -293,12 +294,12 @@ impl Gameboy {
 
             let mut line = scanline - y_pos;
             if y_filp {
-                line = y_size - line - 1
+                line = y_size.wrapping_sub(line).wrapping_sub(1);
             }
 
-            let addr = (tile_location * 16) + (line * 2) as u16 + (bank * 0x2000);
+            let addr = (tile_location.wrapping_mul(16).wrapping_add(line.wrapping_mul(2) as u16)).wrapping_add(bank.wrapping_mul(0x2000));
             let data_1 = self.memory.vram[addr as usize];
-            let data_2 = self.memory.vram[(addr + 1) as usize];
+            let data_2 = self.memory.vram[(addr.wrapping_add(1)) as usize];
 
             for tile_pixel in 0_u8..8_u8{
                 let pixel = x_pos as i16 + (7_i16 - tile_pixel as i16);
@@ -335,7 +336,7 @@ impl Gameboy {
 
     }
 
-    fn set_pixel(&mut self, x: u8, y: u8, color: Color, priority: bool) {
+    fn set_pixel(&mut self, x: u8, y: u8, color: ColorPixel, priority: bool) {
         // If priority is false then sprite pixel is only set if tile colour is 0
         if (priority && !self.bg_priority[x as usize][y as usize]) || self.tile_scanline[x as usize] == 0 {
             self.screen_data[x as usize][y as usize] = color;
@@ -349,7 +350,7 @@ impl Gameboy {
 
         for x in 0..(self.screen_data.len()) {
             for y in 0..(self.screen_data[x].len()) {
-                self.screen_data[x][y] = Color {
+                self.screen_data[x][y] = ColorPixel {
                     r:255,
                     g:255,
                     b:255

@@ -1,6 +1,6 @@
 use crate::gameboy::Gameboy;
 use crate::bit_functions::test;
-use crate::display::Color;
+use crate::display::ColorPixel;
 
 
 pub const PALETTE_GRAYSCALE: u8 = 0;
@@ -16,19 +16,19 @@ const COLOR_ARRAY: [u8; 0x20] = [
 
 // Palettes is an mapping from colour palettes to their colour values
 // to be used by the emulator.
-const PALETTE: [[Color; 4]; 3] = [
-    [Color {r: 255, g: 255, b: 255},
-    Color {r: 204, g: 204, b: 204},
-    Color {r:119, g: 119, b: 119},
-    Color {r:0 , g:0, b:0}],
-    [Color {r: 0x9B, g: 0xBC, b: 0x0F},
-        Color {r: 0x8b, g: 0xAC, b: 0x0F},
-        Color {r: 0x30, g: 0x62, b: 0x30},
-        Color {r: 0x0F, g:0x38, b: 0x0F}],
-    [Color {r: 0xE0, g: 0xF8, b: 0xD0},
-        Color {r: 0x88, g: 0xC0, b: 0x70},
-        Color {r: 0x34, g: 0x68, b: 0x56},
-        Color {r: 0x08, g:0x18, b: 0x20}],
+const PALETTE: [[ColorPixel; 4]; 3] = [
+    [ColorPixel {r: 255, g: 255, b: 255},
+    ColorPixel {r: 204, g: 204, b: 204},
+    ColorPixel {r:119, g: 119, b: 119},
+    ColorPixel {r:0 , g:0, b:0}],
+    [ColorPixel {r: 0x9B, g: 0xBC, b: 0x0F},
+        ColorPixel {r: 0x8b, g: 0xAC, b: 0x0F},
+        ColorPixel {r: 0x30, g: 0x62, b: 0x30},
+        ColorPixel {r: 0x0F, g:0x38, b: 0x0F}],
+    [ColorPixel {r: 0xE0, g: 0xF8, b: 0xD0},
+        ColorPixel {r: 0x88, g: 0xC0, b: 0x70},
+        ColorPixel {r: 0x34, g: 0x68, b: 0x56},
+        ColorPixel {r: 0x08, g:0x18, b: 0x20}],
 ];
 
 pub struct CGBPalette {
@@ -63,13 +63,13 @@ impl CGBPalette {
         }
     }
 
-    pub fn get(&mut self, palette: u8, num: u8) -> Color {
+    pub fn get(&mut self, palette: u8, num: u8) -> ColorPixel {
         let index = (palette * 8) + (num * 2);
         let color = self.palette[self.index as usize] as u16 | (self.palette[(self.index+1) as usize] as u16) << 8;
         let red = color as u8 & 0x1F_u8;
         let green = (color >> 5) as u8 & 0x1F;
         let blue = (color >> 10) as u8 & 0x1F;
-        return Color {
+        return ColorPixel {
             r: COLOR_ARRAY[red as usize],
             g: COLOR_ARRAY[green as usize],
             b: COLOR_ARRAY[blue as usize],
@@ -79,7 +79,7 @@ impl CGBPalette {
 
 
 impl Gameboy {
-    pub fn get_palette_color(&self, index: usize) -> Color {
+    pub fn get_palette_color(&self, index: usize) -> ColorPixel {
         return PALETTE[self.current_palette][index];
     }
 }

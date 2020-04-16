@@ -3,7 +3,7 @@ use crate::memory::{MMU, DIV, TIMA, TMA, TAC, MemoryAddr};
 use crate::input::{Input, Button};
 use crate::speed::{CYCLES_FRAME, Speed};
 use crate::bit_functions::{test, set, reset};
-use crate::display::{SCREEN_HEIGHT, SCREEN_WIDTH, Color};
+use crate::display::{SCREEN_HEIGHT, SCREEN_WIDTH, ColorPixel};
 use crate::palette::{PALETTE_BGB, CGBPalette};
 
 pub struct Options {
@@ -18,14 +18,14 @@ pub struct Gameboy {
 
     paused: bool,
 
-    pub screen_data: [[Color; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
+    pub screen_data: [[ColorPixel; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
     pub bg_priority: [[bool; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
 
     pub tile_scanline: [u8; SCREEN_WIDTH as usize],
     pub scanline_counter: isize,
     pub screen_cleared: bool,
 
-    pub prepared_screen: [[Color; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
+    pub prepared_screen: [[ColorPixel; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
 
     pub interrupts_enabling: bool,
     pub interrupts_on:       bool,
@@ -41,6 +41,7 @@ pub struct Gameboy {
 impl Gameboy {
     pub fn update(&mut self) -> usize {
         if self.paused {
+            println!("PAUSED ?");
             return 0
         }
 
@@ -49,6 +50,7 @@ impl Gameboy {
             let mut cycles_op = 4;
             if !self.halted {
                 cycles_op = self.execute_next_opcode();
+                println!("{}", cycles_op);
             } else {
                 // TODO: This is incorrect
             }
@@ -229,16 +231,16 @@ impl Gameboy {
             memory: MMU::new(rom),
             cpu,
             paused: false,
-            screen_data: [[Color{r: 255, b: 255, g:255}; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
+            screen_data: [[ColorPixel {r: 255, b: 255, g:255}; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
             bg_priority: [[false; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
             tile_scanline: [0; SCREEN_WIDTH as usize],
             scanline_counter: 0,
             screen_cleared: false,
-            prepared_screen: [[Color{r: 255, b: 255, g:255}; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
+            prepared_screen: [[ColorPixel {r: 255, b: 255, g:255}; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
             interrupts_enabling: false,
             interrupts_on: false,
             halted: false,
-            cgb_mode: true,
+            cgb_mode: false,
             current_palette: PALETTE_BGB as usize,
             bg_palette: CGBPalette::new(),
             sprite_palette: CGBPalette::new()
