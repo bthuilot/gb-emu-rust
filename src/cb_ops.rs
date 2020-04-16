@@ -1,7 +1,74 @@
 use crate::gameboy::Gameboy;
-use crate::bit_functions::{set, reset};
+use crate::bit_functions::{set, reset, b};
 
 impl Gameboy {
+
+    pub fn rlc(&mut self, val: u8) -> u8{
+        let carry = val >> 7;
+        let rot = (val << 1) & 0xFF | carry;
+        self.cpu.set_flags(carry == 1, false, false, rot == 0);
+        return rot;
+    }
+
+    pub fn rl(&mut self, val: u8) -> u8{
+        let carry = val >> 7;
+        let prev_carry = b(self.cpu.c());
+        let rot = (val << 1) & 0xFF | prev_carry;
+        self.cpu.set_flags(carry == 1, false, false, rot == 0);
+        return rot;
+    }
+
+    pub fn rrc(&mut self, val: u8) -> u8 {
+        let carry = val & 1;
+        let rot = (val >> 1) | (carry << 7);
+        self.cpu.set_flags(carry == 1, false, false, rot == 0);
+        return rot;
+    }
+
+    pub fn rr(&mut self, val: u8) -> u8{
+        let carry = val & 1;
+        let prev_carry = b(self.cpu.c());
+        let rot = (val >> 1)  | (prev_carry << 7);
+        self.cpu.set_flags(carry == 1, false, false, rot ==0);
+        return rot;
+    }
+
+    pub fn sla(&mut self, val: u8) -> u8{
+        let carry = val >> 7;
+        let rot = (val << 1) & 0xFF;
+        self.cpu.set_flags(carry == 1, false, false, rot ==0);
+
+        return rot;
+    }
+
+    pub fn sra(&mut self, val: u8) -> u8{
+        let rot = (val & 128) | (val >> 1);
+
+        self.cpu.set_flags(val & 1 == 1, false, false, rot == 0);
+        return rot;
+    }
+
+    pub fn srl(&mut self, val: u8) -> u8 {
+        let carry = val & 1;
+        let rot = (val >> 1);
+        self.cpu.set_flags(carry == 1, false, false, rot ==0);
+
+        return rot;
+    }
+
+    pub fn bit(&mut self, bit: u8, val: u8) {
+        self.cpu.set_z((val>>bit)&1 == 0);
+        self.cpu.set_n(false);
+        self.cpu.set_h(true);
+    }
+
+    fn swap(&mut self, val: u8) -> u8 {
+        let swapped = val<<4&240 | val>>4;
+        self.cpu.set_flags(false, false, false, swapped == 0);
+        return swapped;
+    }
+
+
     pub fn find_cb_op(&mut self, code: u8) {
         match code {
             0x0 => {
@@ -29,12 +96,12 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0x6 => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = self.rlc(addr);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x7 => {
-                let val = self.rlc(self.cpuaf.hi());
+                let val = self.rlc(self.cpu.af.hi());
                 self.cpu.af.set_hi(val);
             }
             0x8 => {
@@ -62,9 +129,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0xe => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = self.rrc(addr);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0xf => {
                 let val = self.rrc(self.cpu.af.hi());
@@ -95,9 +162,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0x16 => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = self.rl(addr);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x17 => {
                 let val = self.rl(self.cpu.af.hi());
@@ -128,9 +195,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0x1e => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = self.rr(addr);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x1f => {
                 let val = self.rr(self.cpu.af.hi());
@@ -161,9 +228,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0x26 => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = self.sla(addr);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x27 => {
                 let val = self.sla(self.cpu.af.hi());
@@ -194,9 +261,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0x2e => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = self.sra(addr);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x2f => {
                 let val = self.sra(self.cpu.af.hi());
@@ -227,9 +294,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0x36 => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = self.swap(addr);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x37 => {
                 let val = self.swap(self.cpu.af.hi());
@@ -260,213 +327,213 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0x3e => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = self.srl(addr);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x3f => {
                 let val = self.srl(self.cpu.af.hi());
                 self.cpu.af.set_hi(val);
             }
             0x40 => {
-                bit(0, self.cpu.bc.hi());
+                self.bit(0, self.cpu.bc.hi());
             }
             0x41 => {
-                bit(0, self.cpu.bc.lo());
+                self.bit(0, self.cpu.bc.lo());
             }
             0x42 => {
-                bit(0, self.cpu.de.hi());
+                self.bit(0, self.cpu.de.hi());
             }
             0x43 => {
-                bit(0, self.cpu.de.lo());
+                self.bit(0, self.cpu.de.lo());
             }
             0x44 => {
-                bit(0, self.cpu.hl.hi());
+                self.bit(0, self.cpu.hl.hi());
             }
             0x45 => {
-                bit(0, self.cpu.hl.lo());
+                self.bit(0, self.cpu.hl.lo());
             }
             0x46 => {
-                let addr = self.memory.read(self.cpu.hl.full());
-                bit(0, addr);
+                let addr = self.read(self.cpu.hl.full());
+                self.bit(0, addr);
             }
             0x47 => {
-                bit(0, self.cpu.af.hi());
+                self.bit(0, self.cpu.af.hi());
             }
             0x48 => {
-                bit(1, self.cpu.bc.hi());
+                self.bit(1, self.cpu.bc.hi());
             }
             0x49 => {
-                bit(1, self.cpu.bc.lo());
+                self.bit(1, self.cpu.bc.lo());
             }
             0x4a => {
-                bit(1, self.cpu.de.hi());
+                self.bit(1, self.cpu.de.hi());
             }
             0x4b => {
-                bit(1, self.cpu.de.lo());
+                self.bit(1, self.cpu.de.lo());
             }
             0x4c => {
-                bit(1, self.cpu.hl.hi());
+                self.bit(1, self.cpu.hl.hi());
             }
             0x4d => {
-                bit(1, self.cpu.hl.lo());
+                self.bit(1, self.cpu.hl.lo());
             }
             0x4e => {
-                let addr = self.memory.read(self.cpu.hl.full());
-                bit(1, addr);
+                let addr = self.read(self.cpu.hl.full());
+                self.bit(1, addr);
             }
             0x4f => {
-                bit(1, self.cpu.af.hi());
+                self.bit(1, self.cpu.af.hi());
             }
             0x50 => {
-                bit(2, self.cpu.bc.hi());
+                self.bit(2, self.cpu.bc.hi());
             }
             0x51 => {
-                bit(2, self.cpu.bc.lo());
+                self.bit(2, self.cpu.bc.lo());
             }
             0x52 => {
-                bit(2, self.cpu.de.hi());
+                self.bit(2, self.cpu.de.hi());
             }
             0x53 => {
-                bit(2, self.cpu.de.lo());
+                self.bit(2, self.cpu.de.lo());
             }
             0x54 => {
-                bit(2, self.cpu.hl.hi());
+                self.bit(2, self.cpu.hl.hi());
             }
             0x55 => {
-                bit(2, self.cpu.hl.lo());
+                self.bit(2, self.cpu.hl.lo());
             }
             0x56 => {
-                let addr = self.memory.read(self.cpu.hl.full());
-                bit(2, addr);
+                let addr = self.read(self.cpu.hl.full());
+                self.bit(2, addr);
             }
             0x57 => {
-                bit(2, self.cpu.af.hi());
+                self.bit(2, self.cpu.af.hi());
             }
             0x58 => {
-                bit(3, self.cpu.bc.hi());
+                self.bit(3, self.cpu.bc.hi());
             }
             0x59 => {
-                bit(3, self.cpu.bc.lo());
+                self.bit(3, self.cpu.bc.lo());
             }
             0x5a => {
-                bit(3, self.cpu.de.hi());
+                self.bit(3, self.cpu.de.hi());
             }
             0x5b => {
-                bit(3, self.cpu.de.lo());
+                self.bit(3, self.cpu.de.lo());
             }
             0x5c => {
-                bit(3, self.cpu.hl.hi());
+                self.bit(3, self.cpu.hl.hi());
             }
             0x5d => {
-                bit(3, self.cpu.hl.lo());
+                self.bit(3, self.cpu.hl.lo());
             }
             0x5e => {
-                let addr = self.memory.read(self.cpu.hl.full());
-                bit(3, addr);
+                let addr = self.read(self.cpu.hl.full());
+                self.bit(3, addr);
             }
             0x5f => {
-                bit(3, self.cpu.af.hi());
+                self.bit(3, self.cpu.af.hi());
             }
             0x60 => {
-                bit(4, self.cpu.bc.hi());
+                self.bit(4, self.cpu.bc.hi());
             }
             0x61 => {
-                bit(4, self.cpu.bc.lo());
+                self.bit(4, self.cpu.bc.lo());
             }
             0x62 => {
-                bit(4, self.cpu.de.hi());
+                self.bit(4, self.cpu.de.hi());
             }
             0x63 => {
-                bit(4, self.cpu.de.lo());
+                self.bit(4, self.cpu.de.lo());
             }
             0x64 => {
-                bit(4, self.cpu.hl.hi());
+                self.bit(4, self.cpu.hl.hi());
             }
             0x65 => {
-                bit(4, self.cpu.hl.lo());
+                self.bit(4, self.cpu.hl.lo());
             }
             0x66 => {
-                let addr = self.memory.read(self.cpu.hl.full());
-                bit(4, addr);
+                let addr = self.read(self.cpu.hl.full());
+                self.bit(4, addr);
             }
             0x67 => {
-                bit(4, self.cpu.af.hi());
+                self.bit(4, self.cpu.af.hi());
             }
             0x68 => {
-                bit(5, self.cpu.bc.hi());
+                self.bit(5, self.cpu.bc.hi());
             }
             0x69 => {
-                bit(5, self.cpu.bc.lo());
+                self.bit(5, self.cpu.bc.lo());
             }
             0x6a => {
-                bit(5, self.cpu.de.hi());
+                self.bit(5, self.cpu.de.hi());
             }
             0x6b => {
-                bit(5, self.cpu.de.lo());
+                self.bit(5, self.cpu.de.lo());
             }
             0x6c => {
-                bit(5, self.cpu.hl.hi());
+                self.bit(5, self.cpu.hl.hi());
             }
             0x6d => {
-                bit(5, self.cpu.hl.lo());
+                self.bit(5, self.cpu.hl.lo());
             }
             0x6e => {
-                let addr = self.memory.read(self.cpu.hl.full());
-                bit(5, addr);
+                let addr = self.read(self.cpu.hl.full());
+                self.bit(5, addr);
             }
             0x6f => {
-                bit(5, self.cpu.af.hi());
+                self.bit(5, self.cpu.af.hi());
             }
             0x70 => {
-                bit(6, self.cpu.bc.hi());
+                self.bit(6, self.cpu.bc.hi());
             }
             0x71 => {
-                bit(6, self.cpu.bc.lo());
+                self.bit(6, self.cpu.bc.lo());
             }
             0x72 => {
-                bit(6, self.cpu.de.hi());
+                self.bit(6, self.cpu.de.hi());
             }
             0x73 => {
-                bit(6, self.cpu.de.lo());
+                self.bit(6, self.cpu.de.lo());
             }
             0x74 => {
-                bit(6, self.cpu.hl.hi());
+                self.bit(6, self.cpu.hl.hi());
             }
             0x75 => {
-                bit(6, self.cpu.hl.lo());
+                self.bit(6, self.cpu.hl.lo());
             }
             0x76 => {
-                let addr = self.memory.read(self.cpu.hl.full());
-                bit(6, addr);
+                let addr = self.read(self.cpu.hl.full());
+                self.bit(6, addr);
             }
             0x77 => {
-                bit(6, self.cpu.af.hi());
+                self.bit(6, self.cpu.af.hi());
             }
             0x78 => {
-                bit(7, self.cpu.bc.hi());
+                self.bit(7, self.cpu.bc.hi());
             }
             0x79 => {
-                bit(7, self.cpu.bc.lo());
+                self.bit(7, self.cpu.bc.lo());
             }
             0x7a => {
-                bit(7, self.cpu.de.hi());
+                self.bit(7, self.cpu.de.hi());
             }
             0x7b => {
-                bit(7, self.cpu.de.lo());
+                self.bit(7, self.cpu.de.lo());
             }
             0x7c => {
-                bit(7, self.cpu.hl.hi());
+                self.bit(7, self.cpu.hl.hi());
             }
             0x7d => {
-                bit(7, self.cpu.hl.lo());
+                self.bit(7, self.cpu.hl.lo());
             }
             0x7e => {
-                let addr = self.memory.read(self.cpu.hl.full());
-                bit(7, addr);
+                let addr = self.read(self.cpu.hl.full());
+                self.bit(7, addr);
             }
             0x7f => {
-                bit(7, self.cpu.af.hi());
+                self.bit(7, self.cpu.af.hi());
             }
             0x80 => {
                 let val = reset(self.cpu.bc.hi(), 0);
@@ -493,9 +560,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0x86 => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = reset(addr, 0);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x87 => {
                 let val = reset(self.cpu.af.hi(), 0);
@@ -526,9 +593,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0x8e => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = reset(addr, 1);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x8f => {
                 let val = reset(self.cpu.af.hi(), 1);
@@ -559,9 +626,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0x96 => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = reset(addr, 2);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x97 => {
                 let val = reset(self.cpu.af.hi(), 2);
@@ -592,9 +659,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0x9e => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = reset(addr, 3);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x9f => {
                 let val = reset(self.cpu.af.hi(), 3);
@@ -625,9 +692,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0xa6 => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = reset(addr, 4);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0xa7 => {
                 let val = reset(self.cpu.af.hi(), 4);
@@ -658,9 +725,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0xae => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = reset(addr, 5);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0xaf => {
                 let val = reset(self.cpu.af.hi(), 5);
@@ -691,9 +758,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0xb6 => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = reset(addr, 6);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0xb7 => {
                 let val = reset(self.cpu.af.hi(), 6);
@@ -724,9 +791,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0xbe => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = reset(addr, 7);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0xbf => {
                 let val = reset(self.cpu.af.hi(), 7);
@@ -757,9 +824,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0xc6 => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = set(addr, 0);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0xc7 => {
                 let val = set(self.cpu.af.hi(), 0);
@@ -790,9 +857,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0xce => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = set(addr, 1);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0xcf => {
                 let val = set(self.cpu.af.hi(), 1);
@@ -823,9 +890,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0xd6 => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = set(addr, 2);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0xd7 => {
                 let val = set(self.cpu.af.hi(), 2);
@@ -856,9 +923,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0xde => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = set(addr, 3);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0xdf => {
                 let val = set(self.cpu.af.hi(), 3);
@@ -889,9 +956,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0xe6 => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = set(addr, 4);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0xe7 => {
                 let val = set(self.cpu.af.hi(), 4);
@@ -922,9 +989,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0xee => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = set(addr, 5);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0xef => {
                 let val = set(self.cpu.af.hi(), 5);
@@ -955,9 +1022,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0xf6 => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = set(addr, 6);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0xf7 => {
                 let val = set(self.cpu.af.hi(), 6);
@@ -988,9 +1055,9 @@ impl Gameboy {
                 self.cpu.hl.set_lo(val);
             }
             0xfe => {
-                let addr = self.memory.read(self.cpu.hl.full());
+                let addr = self.read(self.cpu.hl.full());
                 let val = set(addr, 7);
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0xff => {
                 let val = set(self.cpu.af.hi(), 7);

@@ -3,7 +3,8 @@ use crate::memory::{MMU, DIV, TIMA, TMA, TAC, MemoryAddr};
 use crate::input::{Input, Button};
 use crate::speed::{CYCLES_FRAME, Speed};
 use crate::bit_functions::{test, set, reset};
-use crate::display::{SCREEN_HEIGHT, SCREEN_WIDTH}
+use crate::display::{SCREEN_HEIGHT, SCREEN_WIDTH, Color};
+use crate::palette::{PALETTE_BGB, CGBPalette};
 
 pub struct Options {
     pub sound: bool,
@@ -17,25 +18,23 @@ pub struct Gameboy {
 
     paused: bool,
 
-    pub screen_data: [[[u8; 3]; SCREEN_HEIGHT]; SCREEN_WIDTH],
-    pub bg_priority: [[bool; SCREEN_HEIGHT]; SCREEN_WIDTH],
+    pub screen_data: [[Color; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
+    pub bg_priority: [[bool; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
 
-    // Track colour of tiles in scanline for priority management.
-    pub tile_scanline: [u8; SCREEN_WIDTH],
+    pub tile_scanline: [u8; SCREEN_WIDTH as usize],
     pub scanline_counter: isize,
     pub screen_cleared: bool,
 
-    pub prepared_screen: [[[u8; 3]; SCREEN_HEIGHT]; SCREEN_WIDTH],
+    pub prepared_screen: [[Color; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
 
     pub interrupts_enabling: bool,
     pub interrupts_on:       bool,
     pub halted:             bool,
 
-    // Flag if the game is running in cgb mode. For this to be true the game
-    // rom must support cgb mode and the option be true.
     pub cgb_mode:       bool,
-//    BGPalette     *cgbPalette
-//    SpritePalette *cgbPalette
+    pub current_palette: usize,
+    pub bg_palette: CGBPalette,
+    pub sprite_palette: CGBPalette,
 }
 
 
@@ -49,9 +48,6 @@ impl Gameboy {
         while cycles < CYCLES_FRAME * (self.memory.speed.current + 1) as usize {
             let mut cycles_op = 4;
             if !self.halted {
-//                if gb.Debug.OutputOpcodes {
-//                    LogOpcode(gb, false)
-//                }
                 cycles_op = self.execute_next_opcode();
             } else {
                 // TODO: This is incorrect
@@ -72,7 +68,7 @@ impl Gameboy {
             out.push_str(format!("{:2x}", y).as_str());
             let mut x: u16 = 0;
             while x < 0x20 {
-                out.push_str(format!("{:2x}", self.memory.read(0x9800_u16.wrapping_add(y*0x20).wrapping_add(x))).as_str());
+                out.push_str(format!("{:2x}", self.read(0x9800_u16.wrapping_add(y*0x20).wrapping_add(x))).as_str());
                 x += 1;
             }
             out.push_str("\n");
@@ -91,15 +87,15 @@ impl Gameboy {
 
     pub fn update_timers(&mut self, cycles: usize) {
         self.divider_register(cycles);
-        if self.memory.is_clock_enabled() {
+        if self.is_clock_enabled() {
             self.memory.timer.value += cycles;
 
             let freq = self.get_clock_freq_count();
             while self.memory.timer.value >= freq {
                 self.memory.timer.value -= freq;
-                let tima = self.memory.read(TIMA);
+                let tima = self.read(TIMA);
                 if tima == 0xFF {
-                    self.memory.ram[(TIMA - 0xFF00) as usize] = self.memory.read(TMA);
+                    self.memory.ram[(TIMA - 0xFF00) as usize] = self.read(TMA);
                     self.request_interrupt(2);
                 } else {
                     self.memory.ram[(TIMA-0xFF00) as usize] = tima + 1;
@@ -118,7 +114,7 @@ impl Gameboy {
     }
 
     pub fn get_clock_freq_count(&self) -> usize {
-        return match self.memory.get_clock_freq() {
+        return match self.get_clock_freq() {
             0 => 1024,
             1 => 16,
             2 => 64,
@@ -130,14 +126,14 @@ impl Gameboy {
         self.cpu.divider += cycles;
         if self.cpu.divider >= 255 {
             self.cpu.divider -= 255;
-            self.memory.ram[(DIV-0xFF00) as usize] += 1
+            self.memory.ram[(DIV-0xFF00) as usize] = self.memory.ram[(DIV-0xFF00) as usize].wrapping_add(1);
         }
     }
 
     pub fn request_interrupt(&mut self, interrupt: u8) {
-        let mut req = self.memory.read_upper_ram(0xFF0F);
+        let mut req = self.read_upper_ram(0xFF0F);
         req = set(req, interrupt);
-        self.memory.write(0xFF0F, req);
+        self.write(0xFF0F, req);
     }
 
     pub fn do_interrupts(&mut self) -> usize {
@@ -149,8 +145,8 @@ impl Gameboy {
         if !self.interrupts_on && self.halted {
             return 0;
         }
-        let req = self.memory.read_upper_ram(0xFF0F);
-        let enabled = self.memory.read_upper_ram(0xFFFF);
+        let req = self.read_upper_ram(0xFF0F);
+        let enabled = self.read_upper_ram(0xFFFF);
         if req > 0 {
             let mut i: u8 = 0;
             while i < 5 {
@@ -172,9 +168,9 @@ impl Gameboy {
         self.interrupts_on = false;
         self.halted = false;
 
-        let mut req = self.memory.read_upper_ram(0xFF0F);
+        let mut req = self.read_upper_ram(0xFF0F);
         req = reset(req, interrupt);
-        self.memory.write(0xFF0F, req);
+        self.write(0xFF0F, req);
 
         self.push_stack(self.cpu.pc);
         self.cpu.pc = match interrupt {
@@ -189,7 +185,7 @@ impl Gameboy {
     }
 
     pub fn pop_pc(&mut self) -> u8{
-        let opcode = self.memory.read(self.cpu.pc);
+        let opcode = self.read(self.cpu.pc);
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
         return opcode
     }
@@ -202,17 +198,17 @@ impl Gameboy {
 
     pub fn pop_stack(&mut self) -> u16{
         let sp = self.cpu.sp.full();
-        let lo = self.memory.read(sp) as u16;
-        let hi = (self.memory.read(sp+1) as u16).wrapping_shl(8);
+        let lo = self.read(sp) as u16;
+        let hi = (self.read(sp+1) as u16).wrapping_shl(8);
         self.cpu.sp.set_full(sp + 2);
         return lo | hi;
     }
 
     pub fn push_stack(&mut self, addr: MemoryAddr) {
         let sp = self.cpu.sp.full();
-        self.memory.write(sp-1, (addr & 0xFF00).wrapping_shr(8) as u8);
-        self.memory.write(sp-2, (addr & 0xFF) as u8);
-        self.cpu.sp.set_full(sp-2)
+        self.write(sp.wrapping_sub(1), (addr & 0xFF00).wrapping_shr(8) as u8);
+        self.write(sp.wrapping_sub(2), (addr & 0xFF) as u8);
+        self.cpu.sp.set_full(sp.wrapping_sub(2));
     }
 
 
@@ -233,10 +229,19 @@ impl Gameboy {
             memory: MMU::new(rom),
             cpu,
             paused: false,
+            screen_data: [[Color{r: 255, b: 255, g:255}; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
+            bg_priority: [[false; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
+            tile_scanline: [0; SCREEN_WIDTH as usize],
+            scanline_counter: 0,
+            screen_cleared: false,
+            prepared_screen: [[Color{r: 255, b: 255, g:255}; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
             interrupts_enabling: false,
             interrupts_on: false,
             halted: false,
             cgb_mode: true,
+            current_palette: PALETTE_BGB as usize,
+            bg_palette: CGBPalette::new(),
+            sprite_palette: CGBPalette::new()
         };
     }
 }

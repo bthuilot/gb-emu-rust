@@ -113,23 +113,23 @@ self.cpu.hl.set_lo(val);
             }
             0x0A => {
                 // LD A,(bc);
-                let val = self.memory.read(self.cpu.bc.full());
+                let val = self.read(self.cpu.bc.full());
                 self.cpu.af.set_hi(val);
             }
             0x1A => {
                 // LD A,(DE);
-                let val = self.memory.read(self.cpu.de.full());
+                let val = self.read(self.cpu.de.full());
                 self.cpu.af.set_hi(val);
             }
             0x7E => {
                 // LD A,(HL);
-                let val = self.memory.read(self.cpu.hl.full());
+                let val = self.read(self.cpu.hl.full());
                 self.cpu.af.set_hi(val);
             }
             0xFA => {
                 // LD A,(nn);
                 let addr = self.pop_pc16();
-                let val = self.memory.read(addr);
+                let val = self.read(addr);
                 self.cpu.af.set_hi(val);
             }
             0x3E => {
@@ -167,7 +167,7 @@ self.cpu.hl.set_lo(val);
             }
             0x46 => {
                 // LD B,(HL);
-                let val = self.memory.read(self.cpu.hl.full());
+                let val = self.read(self.cpu.hl.full());
                 self.cpu.bc.set_hi(val);
             }
             0x4F => {
@@ -200,7 +200,7 @@ self.cpu.hl.set_lo(val);
             }
             0x4E => {
                 // LD C,(HL);
-                let val = self.memory.read(self.cpu.hl.full());
+                let val = self.read(self.cpu.hl.full());
                 self.cpu.bc.set_lo(val);
             }
             0x57 => {
@@ -233,7 +233,7 @@ self.cpu.hl.set_lo(val);
             }
             0x56 => {
                 // LD D,(HL);
-                let val = self.memory.read(self.cpu.hl.full());
+                let val = self.read(self.cpu.hl.full());
                 self.cpu.de.set_hi(val);
             }
             0x5F => {
@@ -266,7 +266,7 @@ self.cpu.hl.set_lo(val);
             }
             0x5E => {
                 // LD E,(HL);
-                let val = self.memory.read(self.cpu.hl.full());
+                let val = self.read(self.cpu.hl.full());
                 self.cpu.de.set_lo(val);
             }
             0x67 => {
@@ -299,7 +299,7 @@ self.cpu.hl.set_lo(val);
             }
             0x66 => {
                 // LD H,(HL);
-                let val = self.memory.read(self.cpu.hl.full());
+                let val = self.read(self.cpu.hl.full());
                 self.cpu.hl.set_hi(val);
             }
             0x6F => {
@@ -332,109 +332,109 @@ self.cpu.hl.set_lo(val);
             }
             0x6E => {
                 // LD L,(HL);
-                let val = self.memory.read(self.cpu.hl.full());
+                let val = self.read(self.cpu.hl.full());
                 self.cpu.hl.set_lo(val);
             }
             0x77 => {
                 // LD (HL),A
                 let val = self.cpu.af.hi();
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x70 => {
                 // LD (HL),B
                 let val = self.cpu.bc.hi();
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x71 => {
                 // LD (HL),C
                 let val = self.cpu.bc.lo();
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x72 => {
                 // LD (HL),D
                 let val = self.cpu.de.hi();
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x73 => {
                 // LD (HL),E
                 let val = self.cpu.de.lo();
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x74 => {
                 // LD (HL),H
                 let val = self.cpu.hl.hi();
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x75 => {
                 // LD (HL),L
                 let val = self.cpu.hl.lo();
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x36 => {
                 // LD (HL),n 36;
                 let val = self.pop_pc();
-                self.memory.write(self.cpu.hl.full(), val);
+                self.write(self.cpu.hl.full(), val);
             }
             0x02 => {
                 // LD (bc),A
                 let val = self.cpu.af.hi();
-                self.memory.write(self.cpu.bc.full(), val);
+                self.write(self.cpu.bc.full(), val);
             }
             0x12 => {
                 // LD (DE),A
                 let val = self.cpu.af.hi();
-                self.memory.write(self.cpu.de.full(), val);
+                self.write(self.cpu.de.full(), val);
             }
             0xEA => {
                 // LD (nn),A
                 let val = self.cpu.af.hi();
                 let addr = self.pop_pc16();
-                self.memory.write(addr, val);
+                self.write(addr, val);
             }
             0xF2 => {
                 // LD A,(C);
                 let val = 0xFF00_u16.wrapping_add(self.cpu.bc.lo() as u16);
-                self.cpu.af.set_hi(self.memory.read(val));
+                self.cpu.af.set_hi(self.read(val));
             }
             0xE2 => {
                 // LD (C),A
                 let val = self.cpu.af.hi();
                 let mem = 0xFF00_u16.wrapping_add(self.cpu.bc.lo() as u16);
-                self.memory.write(mem, val);
+                self.write(mem, val);
             }
             0x3A => {
                 // LDD A,(HL);
-                let val = self.memory.read(self.cpu.hl.full());
+                let val = self.read(self.cpu.hl.full());
                 self.cpu.af.set_hi(val);
                 self.cpu.hl.set_full(self.cpu.hl.full().wrapping_sub(1));
             }
             0x32 => {
                 // LDD (HL),A
                 let val = self.cpu.hl.full();
-                self.memory.write(val, self.cpu.af.hi());
+                self.write(val, self.cpu.af.hi());
                 self.cpu.hl.set_full(self.cpu.hl.full().wrapping_sub(1));
             }
             0x2A => {
                 // LDI A,(HL);
-                let val = self.memory.read(self.cpu.hl.full());
+                let val = self.read(self.cpu.hl.full());
                 self.cpu.af.set_hi(val);
                 self.cpu.hl.set_full(self.cpu.hl.full().wrapping_add(1));
             }
             0x22 => {
                 // LDI (HL),A
                 let val = self.cpu.hl.full();
-                self.memory.write(val, self.cpu.af.hi());
+                self.write(val, self.cpu.af.hi());
                 self.cpu.hl.set_full(self.cpu.hl.full().wrapping_add(1));
             }
             0xE0 => {
                 // LD (0xFF00+n),A
                 let val = 0xFF00_u16.wrapping_add(self.pop_pc() as u16);
-                self.memory.write(val, self.cpu.af.hi());
+                self.write(val, self.cpu.af.hi());
             }
             0xF0 => {
                 // LD A,(0xFF00+n);
                 let addr =self.pop_pc() as u16;
-                let val = self.memory.read_upper_ram(0xFF00_u16.wrapping_add(addr));
+                let val = self.read_upper_ram(0xFF00_u16.wrapping_add(addr));
                 self.cpu.af.set_hi(val);
             }
             // ========== 16-Bit loads ===========
@@ -474,8 +474,8 @@ self.cpu.hl.set_lo(val);
             0x08 => {
                 // LD (nn),SP
                 let address = self.pop_pc16();
-                self.memory.write(address, self.cpu.sp.lo());
-                self.memory.write(address.wrapping_add(1), self.cpu.sp.hi());
+                self.write(address, self.cpu.sp.lo());
+                self.write(address.wrapping_add(1), self.cpu.sp.hi());
             }
             0xF5 => {
                 // PUSH AF
@@ -551,7 +551,7 @@ self.cpu.hl.set_lo(val);
             }
             0x86 => {
                 // ADD A,(HL);
-                let val = self.cpu.add(self.memory.read(self.cpu.hl.full()), self.cpu.af.hi(), false);
+                let val = self.cpu.add(self.read(self.cpu.hl.full()), self.cpu.af.hi(), false);
                 self.cpu.af.set_hi(val);
             }
             0xC6 => {
@@ -597,7 +597,7 @@ self.cpu.hl.set_lo(val);
             }
             0x8E => {
                 // ADC A,(HL);
-                let val = self.cpu.add(self.memory.read(self.cpu.hl.full()), self.cpu.af.hi(), true);
+                let val = self.cpu.add(self.read(self.cpu.hl.full()), self.cpu.af.hi(), true);
                 self.cpu.af.set_hi(val);
             }
             0xCE => {
@@ -643,7 +643,7 @@ self.cpu.hl.set_lo(val);
             }
             0x96 => {
                 // SUB A,(HL);
-                let val = self.cpu.sub(self.cpu.af.hi(), self.memory.read(self.cpu.hl.full()), false);
+                let val = self.cpu.sub(self.cpu.af.hi(), self.read(self.cpu.hl.full()), false);
                 self.cpu.af.set_hi(val);
             }
             0xD6 => {
@@ -689,7 +689,7 @@ self.cpu.hl.set_lo(val);
             }
             0x9E => {
                 // Sbc A,(HL);
-                let val = self.cpu.sub(self.cpu.af.hi(), self.memory.read(self.cpu.hl.full()), true);
+                let val = self.cpu.sub(self.cpu.af.hi(), self.read(self.cpu.hl.full()), true);
                 self.cpu.af.set_hi(val);
             }
             0xDE => {
@@ -735,7 +735,7 @@ self.cpu.hl.set_lo(val);
             }
             0xA6 => {
                 // AND A,(HL);
-                let val = self.cpu.and(self.memory.read(self.cpu.hl.full()), self.cpu.af.hi());
+                let val = self.cpu.and(self.read(self.cpu.hl.full()), self.cpu.af.hi());
                 self.cpu.af.set_hi(val);
             }
             0xE6 => {
@@ -781,7 +781,7 @@ self.cpu.hl.set_lo(val);
             }
             0xB6 => {
                 // OR A,(HL);
-                let val = self.cpu.or(self.memory.read(self.cpu.hl.full()), self.cpu.af.hi());
+                let val = self.cpu.or(self.read(self.cpu.hl.full()), self.cpu.af.hi());
                 self.cpu.af.set_hi(val);
             }
             0xF6 => {
@@ -827,7 +827,7 @@ self.cpu.hl.set_lo(val);
             }
             0xAE => {
                 // XOR A,(HL);
-                let a = self.memory.read(self.cpu.hl.full());
+                let a = self.read(self.cpu.hl.full());
                 let val = self.cpu.xor(a, self.cpu.af.hi());
                 self.cpu.af.set_hi(val);
             }
@@ -867,7 +867,7 @@ self.cpu.hl.set_lo(val);
             }
             0xBE => {
                 // CP A,(HL);
-                self.cpu.cp(self.memory.read(self.cpu.hl.full()), self.cpu.af.hi());
+                self.cpu.cp(self.read(self.cpu.hl.full()), self.cpu.af.hi());
             }
             0xFE => {
                 // CP A,#
@@ -912,8 +912,8 @@ self.cpu.hl.set_lo(val);
             0x34 => {
                 // INC (HL);
                 let addr = self.cpu.hl.full();
-                let val = self.cpu.inc(self.memory.read(addr));
-                self.memory.write(addr, val)
+                let val = self.cpu.inc(self.read(addr));
+                self.write(addr, val)
             }
             0x3D => {
                 // DEC A
@@ -953,8 +953,8 @@ self.cpu.hl.set_lo(val);
             0x35 => {
                 // DEC (HL);
                 let addr = self.cpu.hl.full();
-                let val = self.cpu.dec(self.memory.read(addr));
-                self.memory.write(addr, val);
+                let val = self.cpu.dec(self.read(addr));
+                self.write(addr, val);
             }
             // ========== 16-Bit ALU ===========
             0x09 => {

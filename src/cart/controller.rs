@@ -41,8 +41,11 @@ impl Cart {
         let mut save_data: Vec<u8> = Vec::new();
         let mut file = self.filename.clone();
         file.push_str(".sav");
-        let mut file = File::open(file.as_str()).expect("Unable to open file");
-        file.read_to_end(&mut save_data).expect("");
+        let mut file_result = File::open(file.as_str());
+        if !file_result.is_err() {
+            let mut file = file_result.unwrap();
+            file.read_to_end(&mut save_data).expect("");
+        }
         self.banking_controller.load_save_data(save_data);
     }
 
