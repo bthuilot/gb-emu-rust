@@ -1,7 +1,7 @@
 use crate::cpu::Z80;
 use crate::input::Input;
 use crate::speed::{Speed};
-use crate::cart::controller::Cart;
+use crate::cart::controller::{Cart, CBG_MODE};
 use crate::bit_functions::{val, test, b};
 use crate::gameboy::Gameboy;
 
@@ -101,7 +101,7 @@ impl MMU {
                  value: 0
              },
              input: Input {
-                 mask: 0
+                 mask: 0xFF
              },
              speed : Speed {
                  current: 0,
@@ -119,11 +119,14 @@ impl MMU {
          }
     }
 
+    pub fn has_cgb_mode(&self) -> bool{
+        return self.cart.mode & CBG_MODE != 0;
+    }
+
 
 }
 
 impl Gameboy {
-
 
 
     pub fn is_clock_enabled(&self) -> bool {
@@ -136,8 +139,8 @@ impl Gameboy {
 
 
     fn transfer(&mut self, len: u16) {
-        let mut source = ((self.memory.ram[0x51_usize] as u16)<<8 | (self.memory.ram[0x52_usize]) as u16) & 0xFFF0_u16;
-        let mut destination = ((self.memory.ram[0x53_usize] as u16)<<8 | (self.memory.ram[0x54_usize] as u16)) & 0x1FF0;
+        let mut source = ((self.memory.ram[0x51_usize] as u16)<<8) | (((self.memory.ram[0x52_usize]) as u16) & 0xFFF0_u16);
+        let mut destination = ((self.memory.ram[0x53_usize] as u16)<<8) | ((self.memory.ram[0x54_usize] as u16) & 0x1FF0);
         destination = destination.wrapping_add(0x8000);
 
         // Transfer the data from the source to the destination
@@ -163,13 +166,13 @@ impl Gameboy {
             return
         }
 
-        let mut len = (((value as u16) & 0x7F) + 1) * 0x10;
+        let mut len = ((value as u16) & 0x7F).wrapping_add(1).wrapping_mul(0x10);
         if value >> 7 == 0 {
-            self.memory.hdma_len = self.memory.hdma_len.wrapping_sub(1);
             self.transfer(len);
+            self.memory.ram[0x55] = 0xFF;
         } else {
-            self.memory.ram[0x55 as usize] = 0xFF_u8;
-            self.memory.hdma_active = false;
+            self.memory.hdma_len = value as u8;
+            self.memory.hdma_active = true;
         }
     }
 
@@ -201,13 +204,18 @@ impl Gameboy {
 
     pub fn write_upper_ram(&mut self, addr: MemoryAddr, value: u8) {
         match addr {
-            0xFEA0..=0xFEFE => {
+            0xFEA0..=0xFEFF => {
             },
-            0xFF10..=0xFF26 => {} // Sound,
-            0xFF30..=0xFF3F => {} // WaveForm
+            0xFF10..=0xFF26 => {
+                // TODO: Write Sound
+            }
+            0xFF30..=0xFF3F => {
+                // TODO: Write Wave Form
+            }
             0xFF02 => {
-                println!("Amybe?")
-                // Serial transfer control
+                print!("{}", value as char)
+                // TODO: Serial transfer control
+                // Not too sure what this is
             }
             DIV => {
                 self.memory.timer.reset_timer();
@@ -254,6 +262,7 @@ impl Gameboy {
             },
             0xFF68 => {
                 if self.cgb_mode{
+                    println!("Called");
                     self.bg_palette.update_index(value);
                 }
             },
@@ -280,6 +289,9 @@ impl Gameboy {
                     }
                 }
             },
+            0xFF72..=0xFF77 => {
+                //TODO: Need to figure out what to do here
+            }
             _ => {
                 self.memory.ram[(addr.wrapping_sub(0xFF00)) as usize] = value;
             }
@@ -343,7 +355,7 @@ impl Gameboy {
             }
             // Working RAM shadow
             0xD000..=0xDFFF => {
-                return self.memory.wram[((addr - 0xC000) + (self.memory.wram_bank as u16 * 0x1000)) as usize];
+                return self.memory.wram[((addr - 0xC000) + (self.memory.wram_bank as u16).wrapping_mul(0x1000)) as usize];
             }
             // Working RAM shadow, I/O, Zero-page RAM
             0xE000..=0xFDFF => {

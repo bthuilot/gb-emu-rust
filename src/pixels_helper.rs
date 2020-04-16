@@ -9,20 +9,6 @@ use winit::event::Event;
 use winit::dpi::{PhysicalSize, LogicalSize, LogicalPosition};
 use std::error::Error;
 
-pub struct Runner {
-    gb: Gameboy,
-}
-
-impl Runner {
-    pub fn new(filename: &str) -> Runner {
-        Runner {
-            gb: Gameboy::new(filename, Options {
-                sound: false,
-                cgb: false,
-            })
-        }
-    }
-
     pub(crate) fn create_window(
         title: &str,
         event_loop: &EventLoop<()>,
@@ -70,4 +56,3 @@ impl Runner {
         )
     }
 
-}

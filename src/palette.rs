@@ -65,10 +65,10 @@ impl CGBPalette {
 
     pub fn get(&mut self, palette: u8, num: u8) -> ColorPixel {
         let index = (palette * 8) + (num * 2);
-        let color = self.palette[self.index as usize] as u16 | (self.palette[(self.index+1) as usize] as u16) << 8;
-        let red = color as u8 & 0x1F_u8;
-        let green = (color >> 5) as u8 & 0x1F;
-        let blue = (color >> 10) as u8 & 0x1F;
+        let color = self.palette[index as usize] as u16 | (self.palette[(index+1) as usize] as u16) << 8;
+        let red = (color & 0x1F) as u8;
+        let green = ((color >> 5) & 0x1F) as u8;
+        let blue = ((color >> 10) & 0x1F) as u8;
         return ColorPixel {
             r: COLOR_ARRAY[red as usize],
             g: COLOR_ARRAY[green as usize],

@@ -14,7 +14,7 @@ pub struct Options {
 pub struct Gameboy {
     pub memory: MMU,
     pub cpu: Z80,
-//    Sound  *apu.APU
+    // TODO: Sounds
 
     paused: bool,
 
@@ -41,16 +41,14 @@ pub struct Gameboy {
 impl Gameboy {
     pub fn update(&mut self) -> usize {
         if self.paused {
-            println!("PAUSED ?");
             return 0
         }
 
         let mut cycles = 0;
-        while cycles < CYCLES_FRAME * (self.memory.speed.current + 1) as usize {
+        while cycles < CYCLES_FRAME * (self.memory.speed.current as usize + 1) {
             let mut cycles_op = 4;
             if !self.halted {
                 cycles_op = self.execute_next_opcode();
-                println!("{}", cycles_op);
             } else {
                 // TODO: This is incorrect
             }
@@ -94,13 +92,13 @@ impl Gameboy {
 
             let freq = self.get_clock_freq_count();
             while self.memory.timer.value >= freq {
-                self.memory.timer.value -= freq;
+                self.memory.timer.value = self.memory.timer.value.wrapping_sub(freq);
                 let tima = self.read(TIMA);
                 if tima == 0xFF {
-                    self.memory.ram[(TIMA - 0xFF00) as usize] = self.read(TMA);
+                    self.memory.ram[TIMA.wrapping_sub(0xFF00) as usize] = self.read(TMA);
                     self.request_interrupt(2);
                 } else {
-                    self.memory.ram[(TIMA-0xFF00) as usize] = tima + 1;
+                    self.memory.ram[TIMA.wrapping_sub(0xFF00) as usize] = tima.wrapping_add(1);
                 }
             }
         }
@@ -144,7 +142,7 @@ impl Gameboy {
             self.interrupts_enabling = false;
             return 0;
         }
-        if !self.interrupts_on && self.halted {
+        if !self.interrupts_on && !self.halted {
             return 0;
         }
         let req = self.read_upper_ram(0xFF0F);
@@ -195,20 +193,20 @@ impl Gameboy {
     pub fn pop_pc16(&mut self) -> u16 {
         let byte_1 = self.pop_pc() as u16;
         let byte_2 = self.pop_pc() as u16;
-        return byte_2.wrapping_shl(8) | byte_1;
+        return (byte_2 << 8) | byte_1;
     }
 
     pub fn pop_stack(&mut self) -> u16{
         let sp = self.cpu.sp.full();
         let lo = self.read(sp) as u16;
-        let hi = (self.read(sp+1) as u16).wrapping_shl(8);
-        self.cpu.sp.set_full(sp + 2);
+        let hi = (self.read(sp.wrapping_add(1))as u16) << 8;
+        self.cpu.sp.set_full(sp.wrapping_add(2));
         return lo | hi;
     }
 
     pub fn push_stack(&mut self, addr: MemoryAddr) {
         let sp = self.cpu.sp.full();
-        self.write(sp.wrapping_sub(1), (addr & 0xFF00).wrapping_shr(8) as u8);
+        self.write(sp.wrapping_sub(1), ((addr & 0xFF00) >> 8) as u8);
         self.write(sp.wrapping_sub(2), (addr & 0xFF) as u8);
         self.cpu.sp.set_full(sp.wrapping_sub(2));
     }
@@ -226,21 +224,23 @@ impl Gameboy {
 
     pub fn new(rom: &str, options: Options) -> Gameboy {
         let mut cpu = Z80::new();
-        cpu.init(options.cgb);
+        let mut memory = MMU::new(rom);
+        let cgb_mode = memory.has_cgb_mode();
+        cpu.init(cgb_mode);
         return Gameboy {
-            memory: MMU::new(rom),
+            memory,
             cpu,
             paused: false,
             screen_data: [[ColorPixel {r: 255, b: 255, g:255}; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
             bg_priority: [[false; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
             tile_scanline: [0; SCREEN_WIDTH as usize],
-            scanline_counter: 0,
+            scanline_counter: 456,
             screen_cleared: false,
             prepared_screen: [[ColorPixel {r: 255, b: 255, g:255}; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize],
             interrupts_enabling: false,
             interrupts_on: false,
             halted: false,
-            cgb_mode: false,
+            cgb_mode,
             current_palette: PALETTE_BGB as usize,
             bg_palette: CGBPalette::new(),
             sprite_palette: CGBPalette::new()

@@ -13,7 +13,7 @@ pub struct MBC1 {
 impl MBC1 {
     fn update_rom_bank(&mut self) {
         if self.rom_bank == 0x00 || self.rom_bank == 0x20 || self.rom_bank == 0x40 || self.rom_bank == 0x60 {
-            self.rom_bank += 1
+            self.rom_bank = self.rom_bank.wrapping_add(1)
         }
     }
 
@@ -21,7 +21,7 @@ impl MBC1 {
         return MBC1 {
             rom: data,
             rom_bank: 1,
-            ram: Vec::new(),
+            ram: vec![0; 0x8000],
             ram_bank: 0,
             ram_enabled: false,
             rom_banking: false
@@ -37,8 +37,8 @@ impl BankingController for MBC1 {
     fn read(&self, address: u16) -> u8 {
        return match address {
             0..=0x3FFF => self.rom[address as usize],
-            0x4000..=0x7FFF => self.rom[((address-0x4000) as u32 + (self.rom_bank*0x4000)) as usize],
-            _ => self.ram[((0x2000*self.ram_bank)+ (address-0xA000) as u32) as usize],
+            0x4000..=0x7FFF => self.rom[(address.wrapping_sub(0x4000) as u32).wrapping_add(self.rom_bank.wrapping_mul(0x4000)) as usize],
+            _ => self.ram[0x2000_u32.wrapping_mul(self.ram_bank).wrapping_add(address.wrapping_sub(0xA000) as u32) as usize],
         }
 
     }
@@ -80,7 +80,7 @@ impl BankingController for MBC1 {
 
     fn write_ram(&mut self, address: u16, value: u8) {
         if self.ram_enabled {
-            let index = (0x2000*self.ram_bank)+(address-0xA000) as u32;
+            let index = 0x2000_u32.wrapping_mul(self.ram_bank).wrapping_add(address.wrapping_sub(0xA000) as u32);
             self.ram[index as usize] = value;
         }
     }

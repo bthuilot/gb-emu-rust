@@ -21,7 +21,7 @@ pub struct Register  {
 
 impl Register {
     pub fn hi(&self) -> u8 {
-        return self.value.wrapping_shr(8) as u8;
+        return (self.value >> 8) as u8;
     }
     pub fn lo(&self) -> u8 {
         return self.value as u8;
@@ -35,7 +35,7 @@ impl Register {
         self.update_mask()
     }
     pub fn set_hi(&mut self, byte: u8){
-        self.value = (byte as u16).wrapping_shl(8) | (self.value as u16) & 0xFF;
+        self.value = (byte as u16) << 8 | (self.value as u16) & 0xFF;
         self.update_mask()
     }
     pub fn set_full(&mut self, word: u16) {
@@ -73,6 +73,11 @@ pub struct Z80 {
 
 impl Z80 {
 
+    pub fn print(&self) {
+        println!("regs: {} {} {} {}", self.af.full(), self.bc.full(), self.de.full(), self.hl.full());
+        // println!("sp: {}", self.sp.value);
+        println!("pc: {}", self.pc);
+    }
     pub fn init(&mut self, cgb: bool) {
         self.pc = 0x100;
         if cgb {
@@ -143,45 +148,119 @@ impl Z80 {
 
 
 
-    pub fn add(&mut self, val1: u8, val2: u8, carry: bool) -> u8{
+    pub fn add(&mut self, reg: &str, high: bool, val1: u8, val2: u8, carry: bool) {
         let carry_bit = b(self.c() && carry) as u16;
         let result = (val1 as u16).wrapping_add(val2 as u16).wrapping_add(carry_bit);
         let result_u8 = result as u8;
-
+        if high {
+            self.set_hi(reg, result_u8);
+        } else {
+            self.set_lo(reg, result_u8);
+        }
         self.set_z(result_u8 == 0);
         self.set_n(false);
         self.set_h((val2 & 0xF) + (val1 & 0xF) + (carry_bit as u8) > 0xF);
         self.set_c(result > 0xFF);
-        return result_u8;
     }
 
-    pub fn sub(&mut self, val1: u8, val2: u8, carry: bool) -> u8{
+    pub fn sub(&mut self, reg: &str, high: bool, val1: u8, val2: u8, carry: bool){
         let carry_bit = b(self.c() && carry) as i16;
         let result = (val1 as i16).wrapping_sub(val2 as i16).wrapping_sub(carry_bit);
         let result_u8 = result as u8;
+        if high {
+            self.set_hi(reg, result_u8);
+        } else {
+            self.set_lo(reg, result_u8);
+        }
         self.set_z(result_u8 == 0);
         self.set_n(true);
         self.set_h(((val2 & 0xF) as i16).wrapping_sub((val1 & 0xF)as i16).wrapping_sub(carry_bit) < 0);
         self.set_c(result < 0);
-        return result_u8;
     }
 
-    pub fn and(&mut self, val1: u8, val2: u8)  -> u8{
+    pub fn and(&mut self, reg: &str, high: bool, val1: u8, val2: u8) {
         let result = val1 & val2;
+        if high {
+            self.set_hi(reg, result);
+        } else {
+            self.set_lo(reg, result);
+        }
         self.set_flags(false, true, false, result == 0);
-        return result;
     }
 
-    pub fn or(&mut self, val1: u8, val2: u8) -> u8{
+    pub fn or(&mut self, reg: &str, high: bool, val1: u8, val2: u8) {
         let result = val1 | val2;
+        if high {
+            self.set_hi(reg, result);
+        } else {
+            self.set_lo(reg, result);
+        }
         self.set_flags(false, true, false, result == 0);
-        return result;
     }
 
-    pub fn xor(&mut self, val1: u8, val2: u8)  -> u8{
+    pub fn set_hi(&mut self, reg: &str, val: u8) {
+        match reg {
+            "af" => {
+                self.af.set_hi(val);
+            },
+            "bc" => {
+                self.bc.set_hi(val);
+            }
+            "de" => {
+                self.de.set_hi(val);
+            }
+            "hl" => {
+                self.de.set_hi(val);
+            }
+            _ => {}
+        }
+    }
+
+    pub fn set_lo(&mut self, reg: &str, val: u8) {
+        match reg {
+            "af" => {
+                self.af.set_lo(val);
+            },
+            "bc" => {
+                self.bc.set_lo(val);
+            }
+            "de" => {
+                self.de.set_lo(val);
+            }
+            "hl" => {
+                self.de.set_lo(val);
+            }
+            _ => {}
+        }
+    }
+
+
+    pub fn set(&mut self, reg: &str, val: u16) {
+        match reg {
+            "af" => {
+                self.af.set_full(val);
+            },
+            "bc" => {
+                self.bc.set_full(val);
+            }
+            "de" => {
+                self.de.set_full(val);
+            }
+            "hl" => {
+                self.de.set_full(val);
+            }
+            _ => {}
+        }
+    }
+
+    pub fn xor(&mut self, reg: &str, set_hi: bool,val1: u8, val2: u8) {
         let result = val1 ^ val2;
+        if set_hi {
+            self.set_hi(reg, result);
+        } else {
+            self.set_lo(reg, result);
+        }
         self.set_flags(false, true, false, result == 0);
-        return result;
     }
 
     pub fn cp(&mut self, val1: u8, val2: u8) {
@@ -192,40 +271,46 @@ impl Z80 {
         self.set_c(val1 > val2);
     }
 
-    pub fn inc(&mut self, byte: u8) -> u8{
+    pub fn inc(&mut self,reg: &str, set_hi: bool, byte: u8){
         let result = byte.wrapping_add(1);
-
+        if set_hi {
+            self.set_hi(reg, result);
+        } else {
+            self.set_lo(reg, result);
+        }
         self.set_z(result == 0);
         self.set_n(false);
         self.set_h(half_carry_add(byte, 1));
-        return result;
     }
 
-    pub fn dec(&mut self, byte: u8) -> u8{
+    pub fn dec(&mut self,reg: &str, set_hi: bool, byte: u8) {
         let result = byte.wrapping_sub(1);
+        if set_hi {
+            self.set_hi(reg, result);
+        } else {
+            self.set_lo(reg, result);
+        }
         self.set_z(result == 0);
         self.set_n(true);
         self.set_h(byte & 0x0f == 0);
-        return result;
     }
 
-    pub fn add_16(&mut self, val1: u16, val2: u16) -> u16{
+    pub fn add_16(&mut self, reg: &str, val1: u16, val2: u16) {
         let result = (val1 as i32).wrapping_add(val2 as i32);
+        self.set(reg, result as u16);
         self.set_n(false);
         self.set_c(result > 0xFFFF);
         self.set_h((val1 as i32) & 0xFFF > (result & 0xFFF));
-
-        return result as u16;
     }
 
-    pub fn add_16_signed(&mut self, val1: u16, val2: i8)  -> u16{
+    pub fn add_16_signed(&mut self,reg: &str,  val1: u16, val2: i8)  {
         let result = (val1 as i32).wrapping_add(val2 as i32) as u16;
+        self.set(reg, result);
         let tmp = val1 ^ (val2 as u16) ^ result;
         self.set_z(false);
         self.set_n(false);
         self.set_h((tmp & 0x10) == 0x10);
         self.set_c((tmp & 0x100) == 0x100);
-        return result;
     }
 
     pub fn inc_16(&mut self, byte: u16) -> u16 {

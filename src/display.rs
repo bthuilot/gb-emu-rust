@@ -10,9 +10,9 @@ pub struct ColorPixel {
 impl Clone for ColorPixel {
     fn clone(&self) -> Self {
         return ColorPixel {
-            r: self.r,
-            b: self.b,
-            g: self.g
+            r: self.r.clone(),
+            b: self.b.clone(),
+            g: self.g.clone()
         }
     }
 }
@@ -42,16 +42,16 @@ impl Gameboy {
         self.set_lcd_status();
 
         if !self.is_lcd_enabled() {
-            println!("WHAUTBTUB");
             return
         }
 
+
         self.scanline_counter -= cycles;
         if self.scanline_counter <=0 {
-            self.memory.ram[0x44] += 1;
+            self.memory.ram[0x44] = self.memory.ram[0x44].wrapping_add(1);
             if self.memory.ram[0x44] > 153 {
                 self.prepared_screen.clone_from_slice(&self.screen_data);
-                self.screen_data = [[ColorPixel { r: 255, g: 255, b:255 }; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize];
+                self.screen_data = [[ColorPixel { r: 0, g: 0, b:255 }; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize];
                 self.bg_priority = [[false; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize];
                 self.memory.ram[0x44] = 0;
             }
@@ -70,7 +70,7 @@ impl Gameboy {
 
         if !self.is_lcd_enabled() {
             self.clear_screen();
-            println!("Here");
+            // println!("Here");
             self.scanline_counter = 456;
             self.memory.ram[0x44] = 0;
             status &= 252;
@@ -97,7 +97,7 @@ impl Gameboy {
             status = set(status, 1);
             request_interrupt = test(status, 5);
         } else if self.scanline_counter >= LCD_MODE_3_BOUNDS {
-            mode = 2;
+            mode = 3;
             status = set(status, 0);
             status = set(status, 1);
             request_interrupt = false;
@@ -181,7 +181,7 @@ impl Gameboy {
         let window_x: u8 = self.read_upper_ram(0xFF4B).wrapping_sub(7);
 
         let settings = self.get_tile_settings(lcd_control, window_y);
-        let y_pos = if !settings.using_window {scroll_y + scanline} else {scanline - window_y};
+        let y_pos = if !settings.using_window {scroll_y.wrapping_add(scanline)} else {scanline.wrapping_sub(window_y)};
 
         let tile_row = (y_pos/8) as u16 * 32_u16;
 

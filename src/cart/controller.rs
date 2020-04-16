@@ -8,14 +8,14 @@ use crate::cart::mbc3::MBC3;
 use crate::cart::mbc5::MBC5;
 
 const GB_MODE: u8 = 1;
-const CBG_MODE: u8 = 2;
+pub const CBG_MODE: u8 = 2;
 const BOTH_MODE: u8 = 3;
 
 pub struct Cart {
     banking_controller: Box<dyn BankingController>,
     pub(crate) title: String,
     filename: String,
-    mode: u8,
+    pub mode: u8,
 }
 
 
