@@ -5,6 +5,7 @@ use crate::speed::{CYCLES_FRAME, Speed};
 use crate::bit_functions::{test, set, reset};
 use crate::display::{SCREEN_HEIGHT, SCREEN_WIDTH, ColorPixel};
 use crate::palette::{PALETTE_BGB, CGBPalette};
+use std::process::exit;
 
 pub struct Options {
     pub sound: bool,
@@ -225,6 +226,7 @@ impl Gameboy {
     pub fn new(rom: &str, options: Options) -> Gameboy {
         let mut cpu = Z80::new();
         let mut memory = MMU::new(rom);
+        memory.init();
         let cgb_mode = memory.has_cgb_mode();
         cpu.init(cgb_mode);
         return Gameboy {
@@ -243,7 +245,7 @@ impl Gameboy {
             cgb_mode,
             current_palette: PALETTE_BGB as usize,
             bg_palette: CGBPalette::new(),
-            sprite_palette: CGBPalette::new()
+            sprite_palette: CGBPalette::new(),
         };
     }
 }

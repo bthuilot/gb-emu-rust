@@ -95,7 +95,7 @@ impl MMU {
 
     pub fn new(filename: &str) -> MMU {
         let cgb = true;
-         return MMU {
+        return MMU {
              cart: Cart::new(filename),
              timer: Timer {
                  value: 0
@@ -262,7 +262,6 @@ impl Gameboy {
             },
             0xFF68 => {
                 if self.cgb_mode{
-                    println!("Called");
                     self.bg_palette.update_index(value);
                 }
             },
@@ -410,7 +409,7 @@ impl Gameboy {
                 return 0
             }
             0xFF4D =>{
-                return self.memory.speed.current<<7 | b(self.memory.speed.prepare)
+                return self.memory.speed.current<< 7 | b(self.memory.speed.prepare)
             },
             0xFF4F => return self.memory.vram_bank,
             0xFF70 => return self.memory.wram_bank,

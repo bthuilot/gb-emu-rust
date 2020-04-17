@@ -3,57 +3,82 @@ use crate::bit_functions::{set, reset, b};
 
 impl Gameboy {
 
-    pub fn rlc(&mut self, val: u8) -> u8{
+    pub fn rlc(&mut self, reg: &str, high: bool, val: u8) {
         let carry = val >> 7;
         let rot = (val << 1) & 0xFF | carry;
+        if high {
+            self.cpu.set_hi(reg, rot);
+        } else {
+            self.cpu.set_lo(reg, rot);
+        }
         self.cpu.set_flags(carry == 1, false, false, rot == 0);
-        return rot;
     }
 
-    pub fn rl(&mut self, val: u8) -> u8{
+    pub fn rl(&mut self, reg: &str, high: bool, val: u8) {
         let carry = val >> 7;
         let prev_carry = b(self.cpu.c());
         let rot = (val << 1) & 0xFF | prev_carry;
+        if high {
+            self.cpu.set_hi(reg, rot);
+        } else {
+            self.cpu.set_lo(reg, rot);
+        }
         self.cpu.set_flags(carry == 1, false, false, rot == 0);
-        return rot;
     }
 
-    pub fn rrc(&mut self, val: u8) -> u8 {
+    pub fn rrc(&mut self,  reg: &str, high: bool,val: u8) {
         let carry = val & 1;
         let rot = (val >> 1) | (carry << 7);
+        if high {
+            self.cpu.set_hi(reg, rot);
+        } else {
+            self.cpu.set_lo(reg, rot);
+        }
         self.cpu.set_flags(carry == 1, false, false, rot == 0);
-        return rot;
     }
 
-    pub fn rr(&mut self, val: u8) -> u8{
+    pub fn rr(&mut self,  reg: &str, high: bool,val: u8) {
         let carry = val & 1;
         let prev_carry = b(self.cpu.c());
         let rot = (val >> 1)  | (prev_carry << 7);
+        if high {
+            self.cpu.set_hi(reg, rot);
+        } else {
+            self.cpu.set_lo(reg, rot);
+        }
         self.cpu.set_flags(carry == 1, false, false, rot ==0);
-        return rot;
     }
 
-    pub fn sla(&mut self, val: u8) -> u8{
+    pub fn sla(&mut self,  reg: &str, high: bool,val: u8) {
         let carry = val >> 7;
         let rot = (val << 1) & 0xFF;
+        if high {
+            self.cpu.set_hi(reg, rot);
+        } else {
+            self.cpu.set_lo(reg, rot);
+        }
         self.cpu.set_flags(carry == 1, false, false, rot ==0);
-
-        return rot;
     }
 
-    pub fn sra(&mut self, val: u8) -> u8{
+    pub fn sra(&mut self,  reg: &str, high: bool,val: u8) {
         let rot = (val & 128) | (val >> 1);
-
+        if high {
+            self.cpu.set_hi(reg, rot);
+        } else {
+            self.cpu.set_lo(reg, rot);
+        }
         self.cpu.set_flags(val & 1 == 1, false, false, rot == 0);
-        return rot;
     }
 
-    pub fn srl(&mut self, val: u8) -> u8 {
+    pub fn srl(&mut self,  reg: &str, high: bool,val: u8)  {
         let carry = val & 1;
         let rot = (val >> 1);
+        if high {
+            self.cpu.set_hi(reg, rot);
+        } else {
+            self.cpu.set_lo(reg, rot);
+        }
         self.cpu.set_flags(carry == 1, false, false, rot ==0);
-
-        return rot;
     }
 
     pub fn bit(&mut self, bit: u8, val: u8) {
@@ -62,278 +87,242 @@ impl Gameboy {
         self.cpu.set_h(true);
     }
 
-    fn swap(&mut self, val: u8) -> u8 {
+    fn swap(&mut self,  reg: &str, high: bool,val: u8) {
         let swapped = val<<4&240 | val>>4;
+        if high {
+            self.cpu.set_hi(reg, swapped);
+        } else {
+            self.cpu.set_lo(reg, swapped);
+        }
         self.cpu.set_flags(false, false, false, swapped == 0);
-        return swapped;
     }
 
 
     pub fn find_cb_op(&mut self, code: u8) {
         match code {
             0x0 => {
-                let val = self.rlc(self.cpu.bc.hi());
-                self.cpu.bc.set_hi(val);
+                self.rlc("bc", true, self.cpu.bc.hi());
             }
             0x1 => {
-                let val = self.rlc(self.cpu.bc.lo());
-                self.cpu.bc.set_lo(val);
+                self.rlc("bc", false, self.cpu.bc.lo());
             }
             0x2 => {
-                let val = self.rlc(self.cpu.de.hi());
-                self.cpu.de.set_hi(val);
+                self.rlc("de", true, self.cpu.de.hi());
             }
             0x3 => {
-                let val = self.rlc(self.cpu.de.lo());
-                self.cpu.de.set_lo(val);
+                self.rlc("de", false, self.cpu.de.lo());
             }
             0x4 => {
-                let val = self.rlc(self.cpu.hl.hi());
-                self.cpu.hl.set_hi(val);
+                self.rlc("hl", true, self.cpu.hl.hi());
             }
             0x5 => {
-                let val = self.rlc(self.cpu.hl.lo());
-                self.cpu.hl.set_lo(val);
+                self.rlc("hl", false, self.cpu.hl.lo());
             }
             0x6 => {
                 let addr = self.read(self.cpu.hl.full());
-                let val = self.rlc(addr);
-                self.write(self.cpu.hl.full(), val);
+                let carry = addr >> 7;
+                let rot = (addr << 1) & 0xFF | carry;
+                self.write(self.cpu.hl.full(), rot);
+                self.cpu.set_flags(carry == 1, false, false, rot == 0);
             }
             0x7 => {
-                let val = self.rlc(self.cpu.af.hi());
-                self.cpu.af.set_hi(val);
+                self.rlc("af", true, self.cpu.af.hi());
             }
             0x8 => {
-                let val = self.rrc(self.cpu.bc.hi());
-                self.cpu.bc.set_hi(val);
+                self.rrc("bc", true, self.cpu.bc.hi());
             }
             0x9 => {
-                let val = self.rrc(self.cpu.bc.lo());
-                self.cpu.bc.set_lo(val);
+                self.rrc("bc", false, self.cpu.bc.lo());
             }
             0xa => {
-                let val = self.rrc(self.cpu.de.hi());
-                self.cpu.de.set_hi(val);
+                self.rrc("de", true, self.cpu.de.hi());
             }
             0xb => {
-                let val = self.rrc(self.cpu.de.lo());
-                self.cpu.de.set_lo(val);
+                self.rrc("de", false, self.cpu.de.lo());
             }
             0xc => {
-                let val = self.rrc(self.cpu.hl.hi());
-                self.cpu.hl.set_hi(val);
+                self.rrc("hl", true, self.cpu.hl.hi());
             }
             0xd => {
-                let val = self.rrc(self.cpu.hl.lo());
-                self.cpu.hl.set_lo(val);
+                self.rrc("hl", false, self.cpu.hl.lo());
             }
             0xe => {
                 let addr = self.read(self.cpu.hl.full());
-                let val = self.rrc(addr);
-                self.write(self.cpu.hl.full(), val);
+                let carry = addr & 1;
+                let rot = (addr >> 1) | (carry << 7);
+                self.write(self.cpu.hl.full(), rot);
+                self.cpu.set_flags(carry == 1, false, false, rot == 0);
             }
             0xf => {
-                let val = self.rrc(self.cpu.af.hi());
-                self.cpu.af.set_hi(val);
+                self.rrc("af", true, self.cpu.af.hi());
             }
             0x10 => {
-                let val = self.rl(self.cpu.bc.hi());
-                self.cpu.bc.set_hi(val);
+                self.rl("bc", true, self.cpu.bc.hi());
             }
             0x11 => {
-                let val = self.rl(self.cpu.bc.lo());
-                self.cpu.bc.set_lo(val);
+                self.rl("bc", false, self.cpu.bc.lo());
             }
             0x12 => {
-                let val = self.rl(self.cpu.de.hi());
-                self.cpu.de.set_hi(val);
+                self.rl("de", true, self.cpu.de.hi());
             }
             0x13 => {
-                let val = self.rl(self.cpu.de.lo());
-                self.cpu.de.set_lo(val);
+                self.rl("de", false, self.cpu.de.lo());
             }
             0x14 => {
-                let val = self.rl(self.cpu.hl.hi());
-                self.cpu.hl.set_hi(val);
+                self.rl("hl", true, self.cpu.hl.hi());
             }
             0x15 => {
-                let val = self.rl(self.cpu.hl.lo());
-                self.cpu.hl.set_lo(val);
+                self.rl("hl", false, self.cpu.hl.lo());
             }
             0x16 => {
                 let addr = self.read(self.cpu.hl.full());
-                let val = self.rl(addr);
-                self.write(self.cpu.hl.full(), val);
+                let carry = addr >> 7;
+                let prev_carry = b(self.cpu.c());
+                let rot = (addr << 1) & 0xFF | prev_carry;
+                self.write(self.cpu.hl.full(), rot);
+                self.cpu.set_flags(carry == 1, false, false, rot == 0);
             }
             0x17 => {
-                let val = self.rl(self.cpu.af.hi());
-                self.cpu.af.set_hi(val);
+                self.rl("af", true, self.cpu.af.hi());
             }
             0x18 => {
-                let val = self.rr(self.cpu.bc.hi());
-                self.cpu.bc.set_hi(val);
+                self.rr("bc", true, self.cpu.bc.hi());
             }
             0x19 => {
-                let val = self.rr(self.cpu.bc.lo());
-                self.cpu.bc.set_lo(val);
+                self.rr("bc", false, self.cpu.bc.lo());
             }
             0x1a => {
-                let val = self.rr(self.cpu.de.hi());
-                self.cpu.de.set_hi(val);
+                self.rr("de", true, self.cpu.de.hi());
             }
             0x1b => {
-                let val = self.rr(self.cpu.de.lo());
-                self.cpu.de.set_lo(val);
+                self.rr("de", false, self.cpu.de.lo());
             }
             0x1c => {
-                let val = self.rr(self.cpu.hl.hi());
-                self.cpu.hl.set_hi(val);
+                self.rr("hl", true, self.cpu.hl.hi());
             }
             0x1d => {
-                let val = self.rr(self.cpu.hl.lo());
-                self.cpu.hl.set_lo(val);
+                self.rr("hl", false, self.cpu.hl.lo());
             }
             0x1e => {
                 let addr = self.read(self.cpu.hl.full());
-                let val = self.rr(addr);
-                self.write(self.cpu.hl.full(), val);
+                let carry = addr & 1;
+                let prev_carry = b(self.cpu.c());
+                let rot = (addr >> 1)  | (prev_carry << 7);
+                self.write(self.cpu.hl.full(), rot);
+                self.cpu.set_flags(carry == 1, false, false, rot ==0);
             }
             0x1f => {
-                let val = self.rr(self.cpu.af.hi());
-                self.cpu.af.set_hi(val);
+                self.rr("af", true, self.cpu.af.hi());
             }
             0x20 => {
-                let val = self.sla(self.cpu.bc.hi());
-                self.cpu.bc.set_hi(val);
+                self.sla("bc", true, self.cpu.bc.hi());
             }
             0x21 => {
-                let val = self.sla(self.cpu.bc.lo());
-                self.cpu.bc.set_lo(val);
+                self.sla("bc", false, self.cpu.bc.lo());
             }
             0x22 => {
-                let val = self.sla(self.cpu.de.hi());
-                self.cpu.de.set_hi(val);
+                self.sla("de", true, self.cpu.de.hi());
             }
             0x23 => {
-                let val = self.sla(self.cpu.de.lo());
-                self.cpu.de.set_lo(val);
+                self.sla("de", false, self.cpu.de.lo());
             }
             0x24 => {
-                let val = self.sla(self.cpu.hl.hi());
-                self.cpu.hl.set_hi(val);
+                self.sla("hl", true, self.cpu.hl.hi());
             }
             0x25 => {
-                let val = self.sla(self.cpu.hl.lo());
-                self.cpu.hl.set_lo(val);
+                self.sla("hl", false, self.cpu.hl.lo());
             }
             0x26 => {
                 let addr = self.read(self.cpu.hl.full());
-                let val = self.sla(addr);
-                self.write(self.cpu.hl.full(), val);
+                let carry = addr >> 7;
+                let rot = (addr << 1) & 0xFF;
+                self.write(self.cpu.hl.full(), addr);
+                self.cpu.set_flags(carry == 1, false, false, rot ==0);
             }
             0x27 => {
-                let val = self.sla(self.cpu.af.hi());
-                self.cpu.af.set_hi(val);
+                self.sla("af", true, self.cpu.af.hi());
             }
             0x28 => {
-                let val = self.sra(self.cpu.bc.hi());
-                self.cpu.bc.set_hi(val);
+                self.sra("bc", true, self.cpu.bc.hi());
             }
             0x29 => {
-                let val = self.sra(self.cpu.bc.lo());
-                self.cpu.bc.set_lo(val);
+                self.sra("bc", false, self.cpu.bc.lo());
             }
             0x2a => {
-                let val = self.sra(self.cpu.de.hi());
-                self.cpu.de.set_hi(val);
+                self.sra("de", true, self.cpu.de.hi());
             }
             0x2b => {
-                let val = self.sra(self.cpu.de.lo());
-                self.cpu.de.set_lo(val);
+                self.sra("de", false, self.cpu.de.lo());
             }
             0x2c => {
-                let val = self.sra(self.cpu.hl.hi());
-                self.cpu.hl.set_hi(val);
+                self.sra("hl", true, self.cpu.hl.hi());
             }
             0x2d => {
-                let val = self.sra(self.cpu.hl.lo());
-                self.cpu.hl.set_lo(val);
+                self.sra("hl", false, self.cpu.hl.lo());
             }
             0x2e => {
                 let addr = self.read(self.cpu.hl.full());
-                let val = self.sra(addr);
-                self.write(self.cpu.hl.full(), val);
+                let rot = (addr & 128) | (addr >> 1);
+                self.write(self.cpu.hl.full(), rot);
+                self.cpu.set_flags(addr & 1 == 1, false, false, rot == 0);
             }
             0x2f => {
-                let val = self.sra(self.cpu.af.hi());
-                self.cpu.af.set_hi(val);
+                self.sra("af", true, self.cpu.af.hi());
             }
             0x30 => {
-                let val = self.swap(self.cpu.bc.hi());
-                self.cpu.bc.set_hi(val);
+                self.swap("bc", true, self.cpu.bc.hi());
             }
             0x31 => {
-                let val = self.swap(self.cpu.bc.lo());
-                self.cpu.bc.set_lo(val);
+                self.swap("bc", false, self.cpu.bc.lo());
             }
             0x32 => {
-                let val = self.swap(self.cpu.de.hi());
-                self.cpu.de.set_hi(val);
+                self.swap("de", true, self.cpu.de.hi());
             }
             0x33 => {
-                let val = self.swap(self.cpu.de.lo());
-                self.cpu.de.set_lo(val);
+                self.swap("de", false, self.cpu.de.lo());
             }
             0x34 => {
-                let val = self.swap(self.cpu.hl.hi());
-                self.cpu.hl.set_hi(val);
+                self.swap("hl", true, self.cpu.hl.hi());
             }
             0x35 => {
-                let val = self.swap(self.cpu.hl.lo());
-                self.cpu.hl.set_lo(val);
+                self.swap("hl", false, self.cpu.hl.lo());
             }
             0x36 => {
                 let addr = self.read(self.cpu.hl.full());
-                let val = self.swap(addr);
-                self.write(self.cpu.hl.full(), val);
+                let swapped = addr<<4&240 | addr>>4;
+                self.write(self.cpu.hl.full(), swapped);
+                self.cpu.set_flags(false, false, false, swapped == 0);
             }
             0x37 => {
-                let val = self.swap(self.cpu.af.hi());
-                self.cpu.af.set_hi(val);
+                self.swap("af", true, self.cpu.af.hi());
             }
             0x38 => {
-                let val = self.srl(self.cpu.bc.hi());
-                self.cpu.bc.set_hi(val);
+                self.srl("bc", true, self.cpu.bc.hi());
             }
             0x39 => {
-                let val = self.srl(self.cpu.bc.lo());
-                self.cpu.bc.set_lo(val);
+                self.srl("bc", false, self.cpu.bc.lo());
             }
             0x3a => {
-                let val = self.srl(self.cpu.de.hi());
-                self.cpu.de.set_hi(val);
+                self.srl("de", true, self.cpu.de.hi());
             }
             0x3b => {
-                let val = self.srl(self.cpu.de.lo());
-                self.cpu.de.set_lo(val);
+                self.srl("de", false, self.cpu.de.lo());
             }
             0x3c => {
-                let val = self.srl(self.cpu.hl.hi());
-                self.cpu.hl.set_hi(val);
+                self.srl("hl", true, self.cpu.hl.hi());
             }
             0x3d => {
-                let val = self.srl(self.cpu.hl.lo());
-                self.cpu.hl.set_lo(val);
+                self.srl("hl", false, self.cpu.hl.lo());
             }
             0x3e => {
                 let addr = self.read(self.cpu.hl.full());
-                let val = self.srl(addr);
-                self.write(self.cpu.hl.full(), val);
+                let carry = addr & 1;
+                let rot = (addr >> 1);
+                self.write(self.cpu.hl.full(), rot);
+                self.cpu.set_flags(carry == 1, false, false, rot ==0);
             }
             0x3f => {
-                let val = self.srl(self.cpu.af.hi());
-                self.cpu.af.set_hi(val);
+                self.srl("af", true, self.cpu.af.hi());
             }
             0x40 => {
                 self.bit(0, self.cpu.bc.hi());

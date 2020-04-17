@@ -12,6 +12,7 @@ extern crate nfd;
 
 use nfd::Response;
 use std::process::exit;
+use crate::input::UP;
 
 
 mod cpu;
@@ -32,7 +33,7 @@ fn main() -> () {
     let mut correct_file: bool = false;
     let mut file = String::new();
     while !correct_file {
-        let result = nfd::open_file_dialog(Some(".gb"), None).unwrap_or_else(|e| {
+        let result = nfd::open_file_dialog(Some("gb"), None).unwrap_or_else(|e| {
             panic!(e);
         });
         match result {
@@ -87,6 +88,10 @@ fn main() -> () {
             if input.key_pressed(VirtualKeyCode::Escape) || input.quit() {
                 *control_flow = ControlFlow::Exit;
                 return;
+            }
+
+            if input.key_pressed(VirtualKeyCode::Up) {
+                gb.press_button(UP);
             }
 
             // Adjust high DPI factor

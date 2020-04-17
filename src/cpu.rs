@@ -36,7 +36,7 @@ impl Register {
     }
     pub fn set_hi(&mut self, byte: u8){
         self.value = (byte as u16) << 8 | (self.value as u16) & 0xFF;
-        self.update_mask()
+        self.update_mask();
     }
     pub fn set_full(&mut self, word: u16) {
         self.value = word;
@@ -75,7 +75,7 @@ impl Z80 {
 
     pub fn print(&self) {
         println!("regs: {} {} {} {}", self.af.full(), self.bc.full(), self.de.full(), self.hl.full());
-        // println!("sp: {}", self.sp.value);
+        println!("sp: {}", self.sp.full());
         println!("pc: {}", self.pc);
     }
     pub fn init(&mut self, cgb: bool) {
@@ -94,9 +94,11 @@ impl Z80 {
 
     pub fn set_flag(&mut self, index: u8, on: bool) {
         if on {
-            self.af.set_lo(set(self.af.lo(), index))
+            let val = set(self.af.lo(), index);
+            self.af.set_lo(val)
         } else {
-            self.af.set_lo(reset(self.af.lo(), index))
+            let val = reset(self.af.lo(), index);
+            self.af.set_lo(val);
         }
     }
     // SetZ sets the value of the Z flag.
@@ -120,30 +122,30 @@ impl Z80 {
     }
 
     pub fn set_flags(&mut self, c: bool, h: bool, n: bool, z: bool) {
-        self.set_c(c);
+        self.set_z(z);
         self.set_n(n);
         self.set_h(h);
-        self.set_z(z);
+        self.set_c(c);
     }
 
     // Z gets the value of the Z flag.
     pub fn z(&mut self) -> bool {
-        return self.af.full().wrapping_shr(7) & 1 == 1;
+        return (self.af.full() >> 7) & 1 == 1;
     }
 
     // N gets the value of the N flag.
     pub fn n(&mut self) -> bool {
-        return self.af.full().wrapping_shr(6) & 1 == 1;
+        return (self.af.full() >> 6) & 1 == 1;
     }
 
     // H gets the value of the H flag.
     pub fn h(&mut self) -> bool {
-        return self.af.full().wrapping_shr(5) & 1 == 1;
+        return (self.af.full() >> 5) & 1 == 1;
     }
 
     // C gets the value of the C flag.
     pub fn c(&mut self) -> bool {
-        return self.af.full().wrapping_shr(4) & 1 == 1;
+        return (self.af.full() >> 4) & 1 == 1;
     }
 
 
@@ -159,7 +161,7 @@ impl Z80 {
         }
         self.set_z(result_u8 == 0);
         self.set_n(false);
-        self.set_h((val2 & 0xF) + (val1 & 0xF) + (carry_bit as u8) > 0xF);
+        self.set_h((val2 & 0xF).wrapping_add(val1 & 0xF).wrapping_add(carry_bit as u8) > 0xF);
         self.set_c(result > 0xFF);
     }
 
@@ -185,7 +187,10 @@ impl Z80 {
         } else {
             self.set_lo(reg, result);
         }
-        self.set_flags(false, true, false, result == 0);
+        self.set_z(result == 0);
+        self.set_n(false);
+        self.set_h(true);
+        self.set_c(false);
     }
 
     pub fn or(&mut self, reg: &str, high: bool, val1: u8, val2: u8) {
@@ -195,7 +200,10 @@ impl Z80 {
         } else {
             self.set_lo(reg, result);
         }
-        self.set_flags(false, true, false, result == 0);
+        self.set_z(result == 0);
+        self.set_n(false);
+        self.set_h(false);
+        self.set_c(false);
     }
 
     pub fn set_hi(&mut self, reg: &str, val: u8) {
@@ -210,7 +218,7 @@ impl Z80 {
                 self.de.set_hi(val);
             }
             "hl" => {
-                self.de.set_hi(val);
+                self.hl.set_hi(val);
             }
             _ => {}
         }
@@ -260,7 +268,10 @@ impl Z80 {
         } else {
             self.set_lo(reg, result);
         }
-        self.set_flags(false, true, false, result == 0);
+        self.set_z(result == 0);
+        self.set_n(false);
+        self.set_h(false);
+        self.set_c(false);
     }
 
     pub fn cp(&mut self, val1: u8, val2: u8) {
@@ -299,8 +310,8 @@ impl Z80 {
         let result = (val1 as i32).wrapping_add(val2 as i32);
         self.set(reg, result as u16);
         self.set_n(false);
-        self.set_c(result > 0xFFFF);
         self.set_h((val1 as i32) & 0xFFF > (result & 0xFFF));
+        self.set_c(result > 0xFFFF);
     }
 
     pub fn add_16_signed(&mut self,reg: &str,  val1: u16, val2: i8)  {
