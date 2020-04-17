@@ -1,5 +1,4 @@
 use crate::display::{SCREEN_WIDTH, SCREEN_HEIGHT};
-use ticker::Ticker;
 use std::f64::INFINITY;
 use std::time::Duration;
 use crate::gameboy::{Gameboy, Options};
