@@ -236,7 +236,7 @@ impl Gameboy {
                 let addr = self.read(self.cpu.hl.full());
                 let carry = addr >> 7;
                 let rot = (addr << 1) & 0xFF;
-                self.write(self.cpu.hl.full(), addr);
+                self.write(self.cpu.hl.full(), rot);
                 self.cpu.set_flags(carry == 1, false, false, rot ==0);
             }
             0x27 => {

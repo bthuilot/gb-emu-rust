@@ -176,7 +176,7 @@ impl Z80 {
         }
         self.set_z(result_u8 == 0);
         self.set_n(true);
-        self.set_h(((val2 & 0xF) as i16).wrapping_sub((val1 & 0xF)as i16).wrapping_sub(carry_bit) < 0);
+        self.set_h(((val1 & 0x0F) as i16).wrapping_sub((val2 & 0xF)as i16).wrapping_sub(carry_bit) < 0);
         self.set_c(result < 0);
     }
 
@@ -236,7 +236,7 @@ impl Z80 {
                 self.de.set_lo(val);
             }
             "hl" => {
-                self.de.set_lo(val);
+                self.hl.set_lo(val);
             }
             _ => {}
         }
@@ -255,7 +255,7 @@ impl Z80 {
                 self.de.set_full(val);
             }
             "hl" => {
-                self.de.set_full(val);
+                self.hl.set_full(val);
             }
             _ => {}
         }

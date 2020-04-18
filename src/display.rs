@@ -324,7 +324,6 @@ impl Gameboy {
                 if self.cgb_mode {
                     let cgb_palette = attributes & 0x7;
                     let color = self.sprite_palette.get(cgb_palette, color_num);
-                    println!("Called!!");
                     self.set_pixel(pixel as u8, scanline as u8, color, priority);
                 } else {
                     let palette = if test(attributes, 4) {palette_2} else {palette_1};
@@ -341,7 +340,6 @@ impl Gameboy {
     fn set_pixel(&mut self, x: u8, y: u8, color: ColorPixel, priority: bool) {
         // If priority is false then sprite pixel is only set if tile colour is 0
         if (priority && !self.bg_priority[x as usize][y as usize]) || self.tile_scanline[x as usize] == 0 {
-            println!("Hey!!!");
             self.screen_data[x as usize][y as usize] = color;
         }
     }

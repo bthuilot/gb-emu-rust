@@ -34,7 +34,7 @@ const PALETTE: [[ColorPixel; 4]; 3] = [
 pub struct CGBPalette {
     palette: [u8; 0x40],
     pub index: u8,
-    inc: bool,
+    pub inc: bool,
 }
 
 impl CGBPalette {
@@ -65,15 +65,17 @@ impl CGBPalette {
 
     pub fn get(&mut self, palette: u8, num: u8) -> ColorPixel {
         let index = (palette * 8) + (num * 2);
-        let color = self.palette[index as usize] as u16 | (self.palette[(index+1) as usize] as u16) << 8;
+        // println!("index: {}", index);
+        let color = self.palette[index as usize] as u16 | ((self.palette[(index+1) as usize] as u16) << 8);
         let red = (color & 0x1F) as u8;
         let green = ((color >> 5) & 0x1F) as u8;
         let blue = ((color >> 10) & 0x1F) as u8;
-        return ColorPixel {
+        let color = ColorPixel {
             r: COLOR_ARRAY[red as usize],
             g: COLOR_ARRAY[green as usize],
             b: COLOR_ARRAY[blue as usize],
         };
+        return color;
     }
 }
 

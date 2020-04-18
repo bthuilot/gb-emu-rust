@@ -77,7 +77,7 @@ self.cpu.de.set_lo(val);
             0x26 => {
                 // LD H, n
                 let val = self.pop_pc();
-self.cpu.hl.set_hi(val);
+                self.cpu.hl.set_hi(val);
             }
             0x2E => {
                 // LD L, n
