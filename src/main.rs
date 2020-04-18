@@ -12,7 +12,7 @@ extern crate nfd;
 
 use nfd::Response;
 use std::process::exit;
-use crate::input::UP;
+use crate::input::{UP, RIGHT, LEFT, DOWN, START, SELECT, A, B};
 
 
 mod cpu;
@@ -84,8 +84,67 @@ fn main() -> () {
         }
         // Handle input events
         if input.update(event) {
+
+            if input.key_pressed(VirtualKeyCode::Up) {
+                println!("Up");
+                gb.press_button(UP);
+            }
+
+            if input.key_released(VirtualKeyCode::Up) {
+                gb.release_button(UP);
+            }
+
+            if input.key_pressed(VirtualKeyCode::Down) {
+                gb.press_button(DOWN);
+            }
+
+            if input.key_released(VirtualKeyCode::Down) {
+                gb.release_button(DOWN);
+            }
+            if input.key_pressed(VirtualKeyCode::Left) {
+                gb.press_button(LEFT);
+            }
+
+            if input.key_released(VirtualKeyCode::Left) {
+                gb.release_button(LEFT);
+            }
+            if input.key_pressed(VirtualKeyCode::Right) {
+                gb.press_button(RIGHT);
+            }
+
+            if input.key_released(VirtualKeyCode::Right) {
+                gb.release_button(RIGHT);
+            }
+
+            if input.key_pressed(VirtualKeyCode::Escape) {
+                gb.press_button(START)
+            }
+            if input.key_pressed(VirtualKeyCode::Escape) {
+                gb.release_button(START)
+            }
+
+            if input.key_pressed(VirtualKeyCode::Tab) {
+                gb.press_button(SELECT)
+            }
+            if input.key_pressed(VirtualKeyCode::Tab) {
+                gb.release_button(SELECT)
+            }
+
+            if input.key_pressed(VirtualKeyCode::Z) {
+                gb.press_button(A)
+            }
+            if input.key_pressed(VirtualKeyCode::Z) {
+                gb.release_button(A)
+            }
+
+            if input.key_pressed(VirtualKeyCode::X) {
+                gb.press_button(B)
+            }
+            if input.key_pressed(VirtualKeyCode::X) {
+                gb.release_button(B)
+            }
             // Close events
-            if input.key_pressed(VirtualKeyCode::Escape) || input.quit() {
+            if input.quit() {
                 *control_flow = ControlFlow::Exit;
                 return;
             }
@@ -109,4 +168,6 @@ fn main() -> () {
             window.request_redraw();
         }
     });
+
+
 }

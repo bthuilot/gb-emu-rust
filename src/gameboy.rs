@@ -134,6 +134,9 @@ impl Gameboy {
     pub fn request_interrupt(&mut self, interrupt: u8) {
         let mut req = self.read_upper_ram(0xFF0F);
         req = set(req, interrupt);
+        if(interrupt == 4) {
+            println!("req: {}", req)
+        }
         self.write(0xFF0F, req);
     }
 
@@ -149,13 +152,11 @@ impl Gameboy {
         let req = self.read_upper_ram(0xFF0F);
         let enabled = self.read_upper_ram(0xFFFF);
         if req > 0 {
-            let mut i: u8 = 0;
-            while i < 5 {
+            for i in 0_u8..5 {
                 if test(req, i) && test(enabled, i) {
                     self.service_interrupt(i);
                     return 20;
                 }
-                i += 1;
             }
         }
         return 0;

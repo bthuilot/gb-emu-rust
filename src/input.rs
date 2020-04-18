@@ -19,8 +19,8 @@ impl Input {
         let mut i: u8 = 0xF;
         if test(current, 4) {
             i = self.mask & 0xF;
-        }else {
-            i = self.mask.wrapping_shr(4) & 0xF
+        }else if test(current, 5){
+            i = (self.mask >> 4) & 0xF
         }
         return current | 0xC0 | i
     }

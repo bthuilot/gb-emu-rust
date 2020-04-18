@@ -20,7 +20,7 @@ impl MBC5 {
         return MBC5 {
             rom: data,
             rom_bank: 1,
-            ram: Vec::new(),
+            ram: vec![0; 0x20000],
             ram_bank: 0,
             ram_enabled: false,
         }

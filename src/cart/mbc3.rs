@@ -25,7 +25,7 @@ impl MBC3 {
         return MBC3 {
             rom: data,
             rom_bank: 1,
-            ram: Vec::new(),
+            ram: vec![0; 0x8000],
             ram_bank: 0,
             ram_enabled: false,
             clock: [0; 0x10],
@@ -86,7 +86,8 @@ impl BankingController for MBC3 {
             if self.ram_bank >= 0x4 {
                 self.clock[self.ram_bank as usize] = value
             } else {
-                self.ram[((0x2000*self.ram_bank)+ (address-0xA000) as u32) as usize] = value
+                let index = 0x2000_u32.wrapping_mul(self.ram_bank) + (address.wrapping_sub(0xA000)as u32);
+                self.ram[index as usize] = value
             }
         }
     }
@@ -96,7 +97,8 @@ impl BankingController for MBC3 {
     }
 
     fn load_save_data(&mut self, data: Vec<u8>) {
-        self.ram = data
+        self.ram = data;
+        self.ram.resize(0x8000, 0);
     }
 
 }

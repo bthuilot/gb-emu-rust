@@ -19,7 +19,7 @@ impl MBC2 {
         return MBC2 {
             rom: data,
             rom_bank: 1,
-            ram: Vec::new(),
+            ram: vec![0;0x2000],
             ram_enabled: false,
         }
     }
