@@ -13,8 +13,6 @@ use crate::pixels_helper::create_window;
 use crate::input::{A, B, DOWN, LEFT, RIGHT, SELECT, START, UP};
 use crate::graphics::{SCREEN_WIDTH, SCREEN_HEIGHT};
 use pixels::{Pixels, SurfaceTexture};
-use std::error::Error;
-use std::time::Duration;
 use winit::event::{Event, VirtualKeyCode};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit_input_helper::WinitInputHelper;
@@ -33,7 +31,7 @@ fn main() -> () {
                 file = file_path;
                 correct_file = true;
             }
-            Response::OkayMultiple(files) => println!("Please only select one file"),
+            Response::OkayMultiple(_files) => println!("Please only select one file"),
             Response::Cancel => {
                 println!("User canceled");
                 exit(0);
@@ -55,7 +53,7 @@ fn main() -> () {
     event_loop.run(move |event, _, control_flow| {
         // The one and only event that winit_input_helper doesn't have for us...
         if let Event::RedrawRequested(_) = event {
-            let mut frame = pixels.get_frame();
+            let frame = pixels.get_frame();
             for x in 0..gb.rendered_screen.len() {
                 for y in 0..gb.rendered_screen[x].len() {
                     let color = gb.rendered_screen[x][y];

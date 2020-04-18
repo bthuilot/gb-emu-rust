@@ -1,10 +1,6 @@
-use crate::gameboy::Gameboy;
 use crate::{SCREEN_HEIGHT, SCREEN_WIDTH};
-use pixels::{Pixels, SurfaceTexture};
-use std::error::Error;
 use winit::dpi::{LogicalPosition, LogicalSize, PhysicalSize};
-use winit::event::Event;
-use winit::event_loop::{ControlFlow, EventLoop};
+use winit::event_loop::EventLoop;
 
 // Sample code from pixels examples
 pub(crate) fn create_window(

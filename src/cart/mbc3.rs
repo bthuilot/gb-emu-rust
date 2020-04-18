@@ -3,7 +3,6 @@ use crate::cart::BankingController;
 pub struct MBC3 {
     rom: Vec<u8>,
     rom_bank: u32,
-    rom_banking: bool,
 
     ram: Vec<u8>,
     ram_bank: u32,
@@ -30,7 +29,6 @@ impl MBC3 {
             ram_enabled: false,
             clock: [0; 0x10],
             latched_clock: [0; 0x10],
-            rom_banking: false,
             latched: false,
         };
     }
@@ -95,7 +93,7 @@ impl BankingController for MBC3 {
         }
     }
 
-    fn get_save_date(&self) -> Vec<u8> {
+    fn get_save_data(&self) -> Vec<u8> {
         return self.ram.to_vec();
     }
 

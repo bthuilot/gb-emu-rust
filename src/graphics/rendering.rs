@@ -184,7 +184,7 @@ impl Gameboy {
                 tile_location = tile_location.wrapping_add(tile_num.wrapping_mul(16) as u16);
             } else {
                 tile_num = (self.memory.vram[tile_address.wrapping_sub(0x8000) as usize] as i8)as i16;
-                tile_location = (tile_location as i32).wrapping_add((tile_num.wrapping_add(128).wrapping_mul(16) as i32)) as u16;
+                tile_location = (tile_location as i32).wrapping_add(tile_num.wrapping_add(128).wrapping_mul(16) as i32) as u16;
             }
 
             let mut bank_offset = 0x8000_u16;
@@ -290,7 +290,7 @@ impl Gameboy {
                     continue
                 }
 
-                let mut color_bit = if x_flip {
+                let color_bit = if x_flip {
                     ((tile_pixel.wrapping_sub(7) as i8) * -1) as u8
                 } else {
                     tile_pixel
@@ -310,7 +310,7 @@ impl Gameboy {
                 } else {
                     let palette = if test(attributes, 4) {palette_2} else {palette_1};
                     let color = self.get_color(color_num, palette);
-                    self.set_pixel((pixel as u8), (scanline as u8), color, priority)
+                    self.set_pixel(pixel as u8, scanline as u8, color, priority)
                 }
 
                 minx[pixel as usize] = x_pos + SPRITE_PRIORITY_OFFSET as i32;

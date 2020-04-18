@@ -1,5 +1,6 @@
 use crate::gameboy::Gameboy;
 use crate::memory::MemoryAddr;
+use crate::cpu::instructions::OPCODE_CYCLES;
 
 mod cb_instructions;
 mod instructions;
@@ -116,6 +117,14 @@ impl Gameboy {
     pub fn call(&mut self, next: u16) {
         self.push_stack(self.cpu.pc);
         self.cpu.pc = next;
+    }
+
+    pub fn execute_next_opcode(&mut self) -> usize {
+        let opcode = self.pop_pc();
+        self.cpu.clock.t = (OPCODE_CYCLES[opcode as usize] * 4) as usize;
+        self.find_op(opcode);
+        println!("{}", opcode);
+        return self.cpu.clock.t;
     }
 
     pub fn ret(&mut self) {

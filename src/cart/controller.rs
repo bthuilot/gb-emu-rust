@@ -31,15 +31,15 @@ impl Cart {
         self.banking_controller.write_ram(address, value);
     }
 
-    pub fn get_save_date(&self) -> Vec<u8> {
-        return self.banking_controller.get_save_date();
+    pub fn get_save_data(&self) -> Vec<u8> {
+        return self.banking_controller.get_save_data();
     }
 
     pub fn load_save_data(&mut self) {
         let mut save_data: Vec<u8> = Vec::new();
         let mut file = self.filename.clone();
         file.push_str(".sav");
-        let mut file_result = File::open(file.as_str());
+        let file_result = File::open(file.as_str());
         if !file_result.is_err() {
             let mut file = file_result.unwrap();
             file.read_to_end(&mut save_data).expect("");
@@ -48,7 +48,7 @@ impl Cart {
     }
 
     pub fn save(&self) {
-        let data = self.banking_controller.get_save_date();
+        let data = self.banking_controller.get_save_data();
         if data.len() > 0 {
             let mut file = self.filename.clone();
             file.push_str(".sav");
@@ -63,11 +63,11 @@ impl Cart {
     fn get_banking_controller(flag: u8, rom: Vec<u8>) -> Box<dyn BankingController> {
         match flag {
             0x00 | 0x08 | 0x09 | 0x0B | 0x0C | 0x0D => return Box::new(ROM::new_as_bc(rom)),
-            0..=0x03 => return Box::new(MBC1::new_as_bc(rom)),
-            0x03..=0x06 => return Box::new(MBC2::new_as_bc(rom)),
-            0x06..=0x13 => return Box::new(MBC3::new_as_bc(rom)),
-            0x13..=0x17 => return Box::new(MBC1::new_as_bc(rom)),
-            0x17..=0x1F => return Box::new(MBC5::new_as_bc(rom)),
+            0x01..=0x03 => return Box::new(MBC1::new_as_bc(rom)),
+            0x04..=0x06 => return Box::new(MBC2::new_as_bc(rom)),
+            0x07..=0x13 => return Box::new(MBC3::new_as_bc(rom)),
+            0x14..=0x17 => return Box::new(MBC1::new_as_bc(rom)),
+            0x18..=0x1F => return Box::new(MBC5::new_as_bc(rom)),
             _ => return Box::new(MBC1::new_as_bc(rom)),
         }
     }
@@ -117,7 +117,7 @@ impl Cart {
             return Vec::new();
         }
         let mut contents: Vec<u8> = Vec::new();
-        file.unwrap().read_to_end(&mut contents);
+        let result = file.unwrap().read_to_end(&mut contents).expect("Unable to open ROM");
         return contents;
     }
 }

@@ -1,8 +1,7 @@
 mod read;
 mod write;
-use crate::bit_functions::{b, test, val};
+use crate::bit_functions::{test, val};
 use crate::cart::controller::{Cart, CBG_MODE};
-use crate::cpu::Z80;
 use crate::gameboy::Gameboy;
 use crate::input::Input;
 
@@ -36,7 +35,6 @@ pub struct MMU {
     pub timer: Timer,
     pub input: Input,
     pub speed: Speed,
-    cgb: bool,
     pub ram: [u8; 0x100],
     pub vram: [u8; 0x4000],
     vram_bank: u8,
@@ -91,7 +89,6 @@ impl MMU {
     }
 
     pub fn new(filename: &str) -> MMU {
-        let cgb = true;
         return MMU {
             cart: Cart::new(filename),
             timer: Timer { value: 0 },
@@ -100,7 +97,6 @@ impl MMU {
                 current: 0,
                 prepare: false,
             },
-            cgb,
             ram: [0; 0x100],
             vram: [0; 0x4000],
             vram_bank: 0,
@@ -163,7 +159,7 @@ impl Gameboy {
             return;
         }
 
-        let mut len = ((value as u16) & 0x7F).wrapping_add(1).wrapping_mul(0x10);
+        let len = ((value as u16) & 0x7F).wrapping_add(1).wrapping_mul(0x10);
         if value >> 7 == 0 {
             self.transfer(len);
             self.memory.ram[0x55] = 0xFF;

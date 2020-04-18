@@ -26,7 +26,7 @@ pub trait BankingController {
     // GetSaveData returns the save data for this banking controller. In
     // general this will the contents of the RAM, however controllers may
     // choose to store this data in their own format.
-    fn get_save_date(&self) -> Vec<u8>;
+    fn get_save_data(&self) -> Vec<u8>;
 
     // LoadSaveData loads some save data into the cartridge. The banking
     // controller implementation can decide how this data should be loaded.

@@ -99,7 +99,7 @@ impl BankingController for MBC1 {
         }
     }
 
-    fn get_save_date(&self) -> Vec<u8> {
+    fn get_save_data(&self) -> Vec<u8> {
         return self.ram.to_vec();
     }
 

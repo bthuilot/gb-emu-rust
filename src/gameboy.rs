@@ -1,10 +1,8 @@
 use crate::bit_functions::{reset, set, test};
 use crate::cpu::{Z80};
 use crate::graphics::{ColorPixel, SCREEN_HEIGHT, SCREEN_WIDTH};
-use crate::input::{Button, Input};
-use crate::memory::{MemoryAddr, DIV, MMU, TAC, TIMA, TMA, Speed, CYCLES_FRAME};
+use crate::memory::{DIV, MMU, TIMA, TMA, CYCLES_FRAME};
 use crate::graphics::{CGBPalette, PALETTE_BGB};
-use std::process::exit;
 
 pub struct Gameboy {
     pub memory: MMU,

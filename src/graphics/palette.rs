@@ -37,7 +37,7 @@ impl CGBPalette {
     }
 
     pub fn update_index(&mut self, value: u8) {
-        self.index = (value & 0x3f);
+        self.index = value & 0x3f;
         self.inc = test(value, 7);
     }
 

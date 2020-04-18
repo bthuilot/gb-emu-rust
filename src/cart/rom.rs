@@ -19,13 +19,13 @@ impl BankingController for ROM {
         return self.rom[address as usize];
     }
 
-    fn write_rom(&mut self, address: u16, value: u8) {}
+    fn write_rom(&mut self, _address: u16, _value: u8) {}
 
-    fn write_ram(&mut self, address: u16, value: u8) {}
+    fn write_ram(&mut self, _address: u16, _value: u8) {}
 
-    fn get_save_date(&self) -> Vec<u8> {
+    fn get_save_data(&self) -> Vec<u8> {
         return Vec::new();
     }
 
-    fn load_save_data(&mut self, data: Vec<u8>) {}
+    fn load_save_data(&mut self, _data: Vec<u8>) {}
 }

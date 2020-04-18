@@ -1050,7 +1050,6 @@ impl Gameboy {
                 let val = set(self.cpu.af.hi(), 7);
                 self.cpu.af.set_hi(val);
             }
-            _ => {}
         }
     }
 }

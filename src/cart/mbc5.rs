@@ -10,16 +10,6 @@ pub struct MBC5 {
 }
 
 impl MBC5 {
-    fn update_rom_bank(&mut self) {
-        if self.rom_bank == 0x00
-            || self.rom_bank == 0x20
-            || self.rom_bank == 0x40
-            || self.rom_bank == 0x60
-        {
-            self.rom_bank += 1
-        }
-    }
-
     pub(crate) fn new(data: Vec<u8>) -> MBC5 {
         return MBC5 {
             rom: data,
@@ -74,7 +64,7 @@ impl BankingController for MBC5 {
         }
     }
 
-    fn get_save_date(&self) -> Vec<u8> {
+    fn get_save_data(&self) -> Vec<u8> {
         return self.ram.to_vec();
     }
 

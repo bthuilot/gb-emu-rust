@@ -1,11 +1,8 @@
-use crate::bit_functions::{b, half_carry_add, reset, set, val};
-use crate::memory::{MemoryAddr, MMU};
-use std::ops::Add;
-use std::panic::resume_unwind;
+use crate::bit_functions::{b, half_carry_add, reset, set};
 use crate::cpu::Z80;
 
 impl Z80 {
-    pub fn print(&self) {
+    fn print(&self) {
         println!(
             "regs: {} {} {} {}",
             self.af.full(),
@@ -16,6 +13,7 @@ impl Z80 {
         println!("sp: {}", self.sp.full());
         println!("pc: {}", self.pc);
     }
+
     pub fn init(&mut self, cgb: bool) {
         self.pc = 0x100;
         if cgb {

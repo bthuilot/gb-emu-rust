@@ -1,5 +1,4 @@
-use crate::bit_functions::{half_carry_add, reset};
-use crate::cpu::Z80;
+use crate::bit_functions::half_carry_add;
 use crate::gameboy::Gameboy;
 
 // OPCODE_CYCLES is the number of self.cpu cycles for each normal opcode.
@@ -43,12 +42,7 @@ const CBOPCODE_CYCLES: [u8; 256] = [
 ]; //0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 
 impl Gameboy {
-    pub fn execute_next_opcode(&mut self) -> usize {
-        let opcode = self.pop_pc();
-        self.cpu.clock.t = (OPCODE_CYCLES[opcode as usize] * 4) as usize;
-        self.find_op(opcode);
-        return self.cpu.clock.t;
-    }
+
 
     pub fn find_op(&mut self, code: u8) {
         match code {
@@ -467,7 +461,7 @@ impl Gameboy {
             0xF8 => {
                 // LD HL,SP+n
                 let val2 = (self.pop_pc()) as i8;
-                let val = self.cpu.add_16_signed("hl", self.cpu.sp.full(), val2);
+                self.cpu.add_16_signed("hl", self.cpu.sp.full(), val2);
             }
             0x08 => {
                 // LD (nn),SP
@@ -742,14 +736,14 @@ impl Gameboy {
             }
             0xA6 => {
                 // AND A,(HL);
-                let val = self
+                self
                     .cpu
                     .and("af", true, self.read(self.cpu.hl.full()), self.cpu.af.hi());
             }
             0xE6 => {
                 // AND A,#
                 let val1 = self.pop_pc();
-                let val = self.cpu.and("af", true, val1, self.cpu.af.hi());
+                self.cpu.and("af", true, val1, self.cpu.af.hi());
             }
             0xB7 => {
                 // OR A,A
@@ -1094,7 +1088,7 @@ impl Gameboy {
                 // RLA
                 let value = self.cpu.af.hi();
                 let carry: u8 = if self.cpu.c() { 1 } else { 0 };
-                let result = (value.wrapping_shl(1).wrapping_add(carry));
+                let result = value.wrapping_shl(1).wrapping_add(carry);
                 self.cpu.af.set_hi(result);
                 self.cpu.set_z(false);
                 self.cpu.set_n(false);
@@ -1174,7 +1168,7 @@ impl Gameboy {
             }
             0x20 => {
                 // JR NZ,n
-                let next = (self.pop_pc() as i8);
+                let next = self.pop_pc() as i8;
                 if !self.cpu.z() {
                     let addr = (self.cpu.pc as i32).wrapping_add(next as i32);
                     self.cpu.jump((addr) as u16);
@@ -1183,7 +1177,7 @@ impl Gameboy {
             }
             0x28 => {
                 // JR Z,n
-                let next = (self.pop_pc() as i8);
+                let next = self.pop_pc() as i8;
                 if self.cpu.z() {
                     let addr = (self.cpu.pc as i32).wrapping_add(next as i32);
                     self.cpu.jump((addr) as u16);
@@ -1192,7 +1186,7 @@ impl Gameboy {
             }
             0x30 => {
                 // JR NC,n
-                let next = (self.pop_pc() as i8);
+                let next = self.pop_pc() as i8;
                 if !self.cpu.c() {
                     let addr = (self.cpu.pc as i32).wrapping_add(next as i32);
                     self.cpu.jump((addr) as u16);
@@ -1201,7 +1195,7 @@ impl Gameboy {
             }
             0x38 => {
                 // JR C,n
-                let next = (self.pop_pc() as i8);
+                let next = self.pop_pc() as i8;
                 if self.cpu.c() {
                     let addr = (self.cpu.pc as i32).wrapping_add(next as i32);
                     self.cpu.jump((addr) as u16);
