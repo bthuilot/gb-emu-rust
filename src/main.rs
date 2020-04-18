@@ -49,7 +49,7 @@ fn main() -> () {
     let (window, surface, width, height, mut hidpi_factor) = create_window(title, &event_loop);
     let surface_texture = SurfaceTexture::new(width, height, surface);
     let mut pixels =
-        Pixels::new(SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32, surface_texture).expect("Penis");
+        Pixels::new(SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32, surface_texture).expect("Unable to open screen");
     event_loop.run(move |event, _, control_flow| {
         // The one and only event that winit_input_helper doesn't have for us...
         if let Event::RedrawRequested(_) = event {
