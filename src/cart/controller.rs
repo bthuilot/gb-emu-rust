@@ -1,11 +1,11 @@
-use std::io::prelude::*;
-use std::fs::File;
-use crate::cart::BankingController;
-use crate::cart::rom::ROM;
 use crate::cart::mbc1::MBC1;
 use crate::cart::mbc2::MBC2;
 use crate::cart::mbc3::MBC3;
 use crate::cart::mbc5::MBC5;
+use crate::cart::rom::ROM;
+use crate::cart::BankingController;
+use std::fs::File;
+use std::io::prelude::*;
 
 const GB_MODE: u8 = 1;
 pub const CBG_MODE: u8 = 2;
@@ -18,9 +18,7 @@ pub struct Cart {
     pub mode: u8,
 }
 
-
 impl Cart {
-
     pub fn read(&self, address: u16) -> u8 {
         return self.banking_controller.read(address);
     }
@@ -62,7 +60,7 @@ impl Cart {
         }
     }
 
-    fn get_banking_controller(flag: u8, rom: Vec<u8>) -> Box<dyn  BankingController> {
+    fn get_banking_controller(flag: u8, rom: Vec<u8>) -> Box<dyn BankingController> {
         match flag {
             0x00 | 0x08 | 0x09 | 0x0B | 0x0C | 0x0D => return Box::new(ROM::new_as_bc(rom)),
             0..=0x03 => return Box::new(MBC1::new_as_bc(rom)),
@@ -74,7 +72,7 @@ impl Cart {
         }
     }
 
-    pub fn new(filename: &str) -> Cart{
+    pub fn new(filename: &str) -> Cart {
         let rom = Cart::read_rom_data(String::from(filename));
         let mode: u8;
         match rom[0x0143] {
@@ -93,7 +91,7 @@ impl Cart {
             if *chr != (0x00) {
                 title.push((*chr) as char);
             }
-            i+=1;
+            i += 1;
         }
 
         let mut cart = Cart {
@@ -103,9 +101,9 @@ impl Cart {
             mode,
         };
         match flag {
-            0x3| 0x6| 0x9| 0xD| 0xF| 0x10| 0x13| 0x17| 0x1B| 0x1E| 0xFF => {
+            0x3 | 0x6 | 0x9 | 0xD | 0xF | 0x10 | 0x13 | 0x17 | 0x1B | 0x1E | 0xFF => {
                 cart.load_save_data();
-            },
+            }
             _ => {}
         }
 

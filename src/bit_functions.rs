@@ -7,20 +7,20 @@ pub fn val(value: u8, bit: u8) -> u8 {
 }
 
 pub fn set(value: u8, bit: u8) -> u8 {
-    return value | (1_u8 << (bit))
+    return value | (1_u8 << (bit));
 }
 
 pub fn reset(value: u8, bit: u8) -> u8 {
-    return value & !(1 << bit)
+    return value & !(1 << bit);
 }
 
 pub fn half_carry_add(value_1: u8, value_2: u8) -> bool {
-    return (value_1&0xF).wrapping_add(value_2&0xF) > 0xF
+    return (value_1 & 0xF).wrapping_add(value_2 & 0xF) > 0xF;
 }
 
 pub fn b(value: bool) -> u8 {
     if value {
-        return 1
+        return 1;
     }
-    return 0
+    return 0;
 }

@@ -1,18 +1,12 @@
 use crate::gameboy::Gameboy;
 use crate::bit_functions::test;
-use crate::display::ColorPixel;
-
-
-pub const PALETTE_GRAYSCALE: u8 = 0;
-pub const PALETTE_ORIGINAL: u8 = 1;
-pub const PALETTE_BGB: u8 = 2;
+use crate::graphics::{ColorPixel, CGBPalette};
 
 const COLOR_ARRAY: [u8; 0x20] = [
     0x0, 0x8, 0x10, 0x18, 0x20, 0x29, 0x31, 0x39,
     0x41, 0x4a, 0x52, 0x5a, 0x62, 0x6a, 0x73, 0x7b,
     0x83, 0x8b, 0x94, 0x9c, 0xa4, 0xac, 0xb4, 0xbd,
     0xc5, 0xcd, 0xd5, 0xde, 0xe6, 0xee, 0xf6, 0xff];
-
 
 // Palettes is an mapping from colour palettes to their colour values
 // to be used by the emulator.
@@ -31,11 +25,6 @@ const PALETTE: [[ColorPixel; 4]; 3] = [
         ColorPixel {r: 0x08, g:0x18, b: 0x20}],
 ];
 
-pub struct CGBPalette {
-    palette: [u8; 0x40],
-    pub index: u8,
-    pub inc: bool,
-}
 
 impl CGBPalette {
 

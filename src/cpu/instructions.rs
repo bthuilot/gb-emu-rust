@@ -1,7 +1,6 @@
+use crate::bit_functions::{half_carry_add, reset};
 use crate::cpu::Z80;
 use crate::gameboy::Gameboy;
-use crate::cb_ops;
-use crate::bit_functions::{half_carry_add, reset};
 
 // OPCODE_CYCLES is the number of self.cpu cycles for each normal opcode.
 pub(crate) const OPCODE_CYCLES: [u8; 256] = [
@@ -43,10 +42,10 @@ const CBOPCODE_CYCLES: [u8; 256] = [
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // F
 ]; //0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 
-
 impl Gameboy {
     pub fn execute_next_opcode(&mut self) -> usize {
         let opcode = self.pop_pc();
+        self.cpu.print();
         self.cpu.clock.t = (OPCODE_CYCLES[opcode as usize] * 4) as usize;
         self.find_op(opcode);
         return self.cpu.clock.t;
@@ -62,17 +61,17 @@ impl Gameboy {
             0x0E => {
                 // LD C, n
                 let val = self.pop_pc();
-self.cpu.bc.set_lo(val);
+                self.cpu.bc.set_lo(val);
             }
             0x16 => {
                 // LD D, n
                 let val = self.pop_pc();
-self.cpu.de.set_hi(val);
+                self.cpu.de.set_hi(val);
             }
             0x1E => {
                 // LD E, n
                 let val = self.pop_pc();
-self.cpu.de.set_lo(val);
+                self.cpu.de.set_lo(val);
             }
             0x26 => {
                 // LD H, n
@@ -82,7 +81,7 @@ self.cpu.de.set_lo(val);
             0x2E => {
                 // LD L, n
                 let val = self.pop_pc();
-self.cpu.hl.set_lo(val);
+                self.cpu.hl.set_lo(val);
             }
             0x7F => {
                 // LD A,A
@@ -434,11 +433,11 @@ self.cpu.hl.set_lo(val);
             }
             0xF0 => {
                 // LD A,(0xFF00+n);
-                let addr =self.pop_pc() as u16;
+                let addr = self.pop_pc() as u16;
                 let val = self.read_upper_ram(0xFF00_u16.wrapping_add(addr));
                 self.cpu.af.set_hi(val);
             }
-            // ========== 16-Bit loads ===========
+            // ========== 16 bit instructions ===========
             0x01 => {
                 // LD bc,nn
                 let val = self.pop_pc16();
@@ -516,35 +515,48 @@ self.cpu.hl.set_lo(val);
             // ========== 8-Bit ALU ===========
             0x87 => {
                 // ADD A,A
-                self.cpu.add("af", true, self.cpu.af.hi(), self.cpu.af.hi(), false);
+                self.cpu
+                    .add("af", true, self.cpu.af.hi(), self.cpu.af.hi(), false);
             }
             0x80 => {
                 // ADD A,B
-                self.cpu.add("af", true, self.cpu.bc.hi(), self.cpu.af.hi(), false);
+                self.cpu
+                    .add("af", true, self.cpu.bc.hi(), self.cpu.af.hi(), false);
             }
             0x81 => {
                 // ADD A,C
-                self.cpu.add("af", true, self.cpu.bc.lo(), self.cpu.af.hi(), false);
+                self.cpu
+                    .add("af", true, self.cpu.bc.lo(), self.cpu.af.hi(), false);
             }
             0x82 => {
                 // ADD A,D
-                self.cpu.add("af", true, self.cpu.de.hi(), self.cpu.af.hi(), false);
+                self.cpu
+                    .add("af", true, self.cpu.de.hi(), self.cpu.af.hi(), false);
             }
             0x83 => {
                 // ADD A,E
-                self.cpu.add("af", true, self.cpu.de.lo(), self.cpu.af.hi(), false);
+                self.cpu
+                    .add("af", true, self.cpu.de.lo(), self.cpu.af.hi(), false);
             }
             0x84 => {
                 // ADD A,H
-                self.cpu.add("af", true, self.cpu.hl.hi(), self.cpu.af.hi(), false);
+                self.cpu
+                    .add("af", true, self.cpu.hl.hi(), self.cpu.af.hi(), false);
             }
             0x85 => {
                 // ADD A,L
-                self.cpu.add("af", true, self.cpu.hl.lo(), self.cpu.af.hi(), false);
+                self.cpu
+                    .add("af", true, self.cpu.hl.lo(), self.cpu.af.hi(), false);
             }
             0x86 => {
                 // ADD A,(HL);
-                self.cpu.add("af", true, self.read(self.cpu.hl.full()), self.cpu.af.hi(), false);
+                self.cpu.add(
+                    "af",
+                    true,
+                    self.read(self.cpu.hl.full()),
+                    self.cpu.af.hi(),
+                    false,
+                );
             }
             0xC6 => {
                 // ADD A,#
@@ -553,35 +565,48 @@ self.cpu.hl.set_lo(val);
             }
             0x8F => {
                 // ADC A,A
-                self.cpu.add("af", true, self.cpu.af.hi(), self.cpu.af.hi(), true);
+                self.cpu
+                    .add("af", true, self.cpu.af.hi(), self.cpu.af.hi(), true);
             }
             0x88 => {
                 // ADC A,B
-                self.cpu.add("af", true, self.cpu.bc.hi(), self.cpu.af.hi(), true);
+                self.cpu
+                    .add("af", true, self.cpu.bc.hi(), self.cpu.af.hi(), true);
             }
             0x89 => {
                 // ADC A,C
-                self.cpu.add("af", true, self.cpu.bc.lo(), self.cpu.af.hi(), true);
+                self.cpu
+                    .add("af", true, self.cpu.bc.lo(), self.cpu.af.hi(), true);
             }
             0x8A => {
                 // ADC A,D
-                self.cpu.add("af", true, self.cpu.de.hi(), self.cpu.af.hi(), true);
+                self.cpu
+                    .add("af", true, self.cpu.de.hi(), self.cpu.af.hi(), true);
             }
             0x8B => {
                 // ADC A,E
-                self.cpu.add("af", true, self.cpu.de.lo(), self.cpu.af.hi(), true);
+                self.cpu
+                    .add("af", true, self.cpu.de.lo(), self.cpu.af.hi(), true);
             }
             0x8C => {
                 // ADC A,H
-                self.cpu.add("af", true, self.cpu.hl.hi(), self.cpu.af.hi(), true);
+                self.cpu
+                    .add("af", true, self.cpu.hl.hi(), self.cpu.af.hi(), true);
             }
             0x8D => {
                 // ADC A,L
-                self.cpu.add("af", true, self.cpu.hl.lo(), self.cpu.af.hi(), true);
+                self.cpu
+                    .add("af", true, self.cpu.hl.lo(), self.cpu.af.hi(), true);
             }
             0x8E => {
                 // ADC A,(HL);
-                self.cpu.add("af", true, self.read(self.cpu.hl.full()), self.cpu.af.hi(), true);
+                self.cpu.add(
+                    "af",
+                    true,
+                    self.read(self.cpu.hl.full()),
+                    self.cpu.af.hi(),
+                    true,
+                );
             }
             0xCE => {
                 // ADC A,#
@@ -590,35 +615,48 @@ self.cpu.hl.set_lo(val);
             }
             0x97 => {
                 // SUB A,A
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.af.hi(), false);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.af.hi(), false);
             }
             0x90 => {
                 // SUB A,B
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.bc.hi(), false);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.bc.hi(), false);
             }
             0x91 => {
                 // SUB A,C
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.bc.lo(), false);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.bc.lo(), false);
             }
             0x92 => {
                 // SUB A,D
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.de.hi(), false);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.de.hi(), false);
             }
             0x93 => {
                 // SUB A,E
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.de.lo(), false);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.de.lo(), false);
             }
             0x94 => {
                 // SUB A,H
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.hl.hi(), false);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.hl.hi(), false);
             }
             0x95 => {
                 // SUB A,L
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.hl.lo(), false);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.hl.lo(), false);
             }
             0x96 => {
                 // SUB A,(HL);
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.read(self.cpu.hl.full()), false);
+                self.cpu.sub(
+                    "af",
+                    true,
+                    self.cpu.af.hi(),
+                    self.read(self.cpu.hl.full()),
+                    false,
+                );
             }
             0xD6 => {
                 // SUB A,#
@@ -627,35 +665,48 @@ self.cpu.hl.set_lo(val);
             }
             0x9F => {
                 // Sbc A,A
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.af.hi(), true);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.af.hi(), true);
             }
             0x98 => {
                 // Sbc A,B
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.bc.hi(), true);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.bc.hi(), true);
             }
             0x99 => {
                 // Sbc A,C
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.bc.lo(), true);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.bc.lo(), true);
             }
             0x9A => {
                 // Sbc A,D
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.de.hi(), true);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.de.hi(), true);
             }
             0x9B => {
                 // Sbc A,E
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.de.lo(), true);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.de.lo(), true);
             }
             0x9C => {
                 // Sbc A,H
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.hl.hi(), true);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.hl.hi(), true);
             }
             0x9D => {
                 // Sbc A,L
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.cpu.hl.lo(), true);
+                self.cpu
+                    .sub("af", true, self.cpu.af.hi(), self.cpu.hl.lo(), true);
             }
             0x9E => {
                 // Sbc A,(HL);
-                self.cpu.sub("af", true, self.cpu.af.hi(), self.read(self.cpu.hl.full()), true);
+                self.cpu.sub(
+                    "af",
+                    true,
+                    self.cpu.af.hi(),
+                    self.read(self.cpu.hl.full()),
+                    true,
+                );
             }
             0xDE => {
                 // Sbc A,#
@@ -692,7 +743,9 @@ self.cpu.hl.set_lo(val);
             }
             0xA6 => {
                 // AND A,(HL);
-                let val = self.cpu.and("af", true, self.read(self.cpu.hl.full()), self.cpu.af.hi());
+                let val = self
+                    .cpu
+                    .and("af", true, self.read(self.cpu.hl.full()), self.cpu.af.hi());
             }
             0xE6 => {
                 // AND A,#
@@ -729,7 +782,8 @@ self.cpu.hl.set_lo(val);
             }
             0xB6 => {
                 // OR A,(HL);
-                self.cpu.or("af", true, self.read(self.cpu.hl.full()), self.cpu.af.hi());
+                self.cpu
+                    .or("af", true, self.read(self.cpu.hl.full()), self.cpu.af.hi());
             }
             0xF6 => {
                 // OR A,#
@@ -891,23 +945,27 @@ self.cpu.hl.set_lo(val);
             // ========== 16-Bit ALU ===========
             0x09 => {
                 // ADD HL,bc
-                self.cpu.add_16("hl", self.cpu.hl.full(), self.cpu.bc.full());
+                self.cpu
+                    .add_16("hl", self.cpu.hl.full(), self.cpu.bc.full());
             }
             0x19 => {
                 // ADD HL,DE
-                self.cpu.add_16("hl", self.cpu.hl.full(), self.cpu.de.full());
+                self.cpu
+                    .add_16("hl", self.cpu.hl.full(), self.cpu.de.full());
             }
             0x29 => {
                 // ADD HL,HL
-                self.cpu.add_16("hl", self.cpu.hl.full(), self.cpu.hl.full());
+                self.cpu
+                    .add_16("hl", self.cpu.hl.full(), self.cpu.hl.full());
             }
             0x39 => {
                 // ADD HL,SP
-                self.cpu.add_16("hl", self.cpu.hl.full(), self.cpu.sp.full());
+                self.cpu
+                    .add_16("hl", self.cpu.hl.full(), self.cpu.sp.full());
             }
             0xE8 => {
                 // ADD SP,n
-                let val2 =(self.pop_pc()) as i8;
+                let val2 = (self.pop_pc()) as i8;
                 let val1 = self.cpu.sp.full();
 
                 let result = (val1 as i32).wrapping_add(val2 as i32) as u16;
@@ -961,15 +1019,6 @@ self.cpu.hl.set_lo(val);
             }
             0x27 => {
                 // DAA
-
-                // When this instruction is executed, the A register is bcD
-                // corrected using the contents of the flags. The exact process
-                // is the following: if the least significant four bits of A
-                // contain a non-bcD digit (i. e. it is greater than 9) or the
-                // H flag is set, then 0x60 is added to the register. Then the
-                // four most significant bits are checked. If this more significant
-                // digit also happens to be greater than 9 or the C flag is set,
-                // then 0x60 is added.
                 if !self.cpu.n() {
                     if self.cpu.c() || self.cpu.af.hi() > 0x99 {
                         self.cpu.af.set_hi(self.cpu.af.hi().wrapping_add(0x60));
@@ -1020,13 +1069,8 @@ self.cpu.hl.set_lo(val);
                 // STOP
                 self.halted = true;
                 if self.cgb_mode {
-                    // Handle switching to double speed mode
                     self.check_speed();
                 }
-
-                // Pop the next value as the STOP instruction is 2 bytes long. The second value
-                // can be ignored, although generally it is expected to be 0x00 and any other
-                // value is counted as a corrupted STOP instruction.
                 self.pop_pc();
             }
             0xF3 => {
@@ -1274,7 +1318,11 @@ self.cpu.hl.set_lo(val);
             0xCB => {
                 // CB
                 let next_inst = self.pop_pc();
-                self.cpu.clock.t = self.cpu.clock.t.wrapping_add((CBOPCODE_CYCLES[next_inst as usize] * 4) as usize);
+                self.cpu.clock.t = self
+                    .cpu
+                    .clock
+                    .t
+                    .wrapping_add((CBOPCODE_CYCLES[next_inst as usize] * 4) as usize);
                 self.find_cb_op(next_inst);
             }
             _ => {

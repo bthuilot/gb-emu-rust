@@ -6,9 +6,7 @@ pub struct ROM {
 
 impl ROM {
     pub(crate) fn new(data: Vec<u8>) -> ROM {
-        return ROM {
-            rom: data,
-        }
+        return ROM { rom: data };
     }
 
     pub fn new_as_bc(data: Vec<u8>) -> impl BankingController {
@@ -21,16 +19,13 @@ impl BankingController for ROM {
         return self.rom[address as usize];
     }
 
-    fn write_rom(&mut self, address: u16, value: u8) {
-    }
+    fn write_rom(&mut self, address: u16, value: u8) {}
 
-    fn write_ram(&mut self, address: u16, value: u8) {
-    }
+    fn write_ram(&mut self, address: u16, value: u8) {}
 
     fn get_save_date(&self) -> Vec<u8> {
-        return Vec::new()
+        return Vec::new();
     }
 
-    fn load_save_data(&mut self, data: Vec<u8>) {
-    }
+    fn load_save_data(&mut self, data: Vec<u8>) {}
 }

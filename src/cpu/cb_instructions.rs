@@ -1,8 +1,7 @@
+use crate::bit_functions::{b, reset, set};
 use crate::gameboy::Gameboy;
-use crate::bit_functions::{set, reset, b};
 
 impl Gameboy {
-
     pub fn rlc(&mut self, reg: &str, high: bool, val: u8) {
         let carry = val >> 7;
         let rot = (val << 1) & 0xFF | carry;
@@ -26,7 +25,7 @@ impl Gameboy {
         self.cpu.set_flags(carry == 1, false, false, rot == 0);
     }
 
-    pub fn rrc(&mut self,  reg: &str, high: bool,val: u8) {
+    pub fn rrc(&mut self, reg: &str, high: bool, val: u8) {
         let carry = val & 1;
         let rot = (val >> 1) | (carry << 7);
         if high {
@@ -37,19 +36,19 @@ impl Gameboy {
         self.cpu.set_flags(carry == 1, false, false, rot == 0);
     }
 
-    pub fn rr(&mut self,  reg: &str, high: bool,val: u8) {
+    pub fn rr(&mut self, reg: &str, high: bool, val: u8) {
         let carry = val & 1;
         let prev_carry = b(self.cpu.c());
-        let rot = (val >> 1)  | (prev_carry << 7);
+        let rot = (val >> 1) | (prev_carry << 7);
         if high {
             self.cpu.set_hi(reg, rot);
         } else {
             self.cpu.set_lo(reg, rot);
         }
-        self.cpu.set_flags(carry == 1, false, false, rot ==0);
+        self.cpu.set_flags(carry == 1, false, false, rot == 0);
     }
 
-    pub fn sla(&mut self,  reg: &str, high: bool,val: u8) {
+    pub fn sla(&mut self, reg: &str, high: bool, val: u8) {
         let carry = val >> 7;
         let rot = (val << 1) & 0xFF;
         if high {
@@ -57,10 +56,10 @@ impl Gameboy {
         } else {
             self.cpu.set_lo(reg, rot);
         }
-        self.cpu.set_flags(carry == 1, false, false, rot ==0);
+        self.cpu.set_flags(carry == 1, false, false, rot == 0);
     }
 
-    pub fn sra(&mut self,  reg: &str, high: bool,val: u8) {
+    pub fn sra(&mut self, reg: &str, high: bool, val: u8) {
         let rot = (val & 128) | (val >> 1);
         if high {
             self.cpu.set_hi(reg, rot);
@@ -70,25 +69,25 @@ impl Gameboy {
         self.cpu.set_flags(val & 1 == 1, false, false, rot == 0);
     }
 
-    pub fn srl(&mut self,  reg: &str, high: bool,val: u8)  {
+    pub fn srl(&mut self, reg: &str, high: bool, val: u8) {
         let carry = val & 1;
-        let rot = (val >> 1);
+        let rot = val >> 1;
         if high {
             self.cpu.set_hi(reg, rot);
         } else {
             self.cpu.set_lo(reg, rot);
         }
-        self.cpu.set_flags(carry == 1, false, false, rot ==0);
+        self.cpu.set_flags(carry == 1, false, false, rot == 0);
     }
 
     pub fn bit(&mut self, bit: u8, val: u8) {
-        self.cpu.set_z((val>>bit)&1 == 0);
+        self.cpu.set_z((val >> bit) & 1 == 0);
         self.cpu.set_n(false);
         self.cpu.set_h(true);
     }
 
-    fn swap(&mut self,  reg: &str, high: bool,val: u8) {
-        let swapped = val<<4&240 | val>>4;
+    fn swap(&mut self, reg: &str, high: bool, val: u8) {
+        let swapped = val << 4 & 240 | val >> 4;
         if high {
             self.cpu.set_hi(reg, swapped);
         } else {
@@ -96,7 +95,6 @@ impl Gameboy {
         }
         self.cpu.set_flags(false, false, false, swapped == 0);
     }
-
 
     pub fn find_cb_op(&mut self, code: u8) {
         match code {
@@ -207,9 +205,9 @@ impl Gameboy {
                 let addr = self.read(self.cpu.hl.full());
                 let carry = addr & 1;
                 let prev_carry = b(self.cpu.c());
-                let rot = (addr >> 1)  | (prev_carry << 7);
+                let rot = (addr >> 1) | (prev_carry << 7);
                 self.write(self.cpu.hl.full(), rot);
-                self.cpu.set_flags(carry == 1, false, false, rot ==0);
+                self.cpu.set_flags(carry == 1, false, false, rot == 0);
             }
             0x1f => {
                 self.rr("af", true, self.cpu.af.hi());
@@ -237,7 +235,7 @@ impl Gameboy {
                 let carry = addr >> 7;
                 let rot = (addr << 1) & 0xFF;
                 self.write(self.cpu.hl.full(), rot);
-                self.cpu.set_flags(carry == 1, false, false, rot ==0);
+                self.cpu.set_flags(carry == 1, false, false, rot == 0);
             }
             0x27 => {
                 self.sla("af", true, self.cpu.af.hi());
@@ -289,7 +287,7 @@ impl Gameboy {
             }
             0x36 => {
                 let addr = self.read(self.cpu.hl.full());
-                let swapped = addr<<4&240 | addr>>4;
+                let swapped = addr << 4 & 240 | addr >> 4;
                 self.write(self.cpu.hl.full(), swapped);
                 self.cpu.set_flags(false, false, false, swapped == 0);
             }
@@ -317,9 +315,9 @@ impl Gameboy {
             0x3e => {
                 let addr = self.read(self.cpu.hl.full());
                 let carry = addr & 1;
-                let rot = (addr >> 1);
+                let rot = addr >> 1;
                 self.write(self.cpu.hl.full(), rot);
-                self.cpu.set_flags(carry == 1, false, false, rot ==0);
+                self.cpu.set_flags(carry == 1, false, false, rot == 0);
             }
             0x3f => {
                 self.srl("af", true, self.cpu.af.hi());

@@ -1,80 +1,18 @@
+use crate::bit_functions::{b, half_carry_add, reset, set, val};
+use crate::memory::{MemoryAddr, MMU};
 use std::ops::Add;
-use crate::memory::{MMU, MemoryAddr};
-use crate::ops::{OPCODE_CYCLES};
-use crate::bit_functions::{set, reset, b, val, half_carry_add};
 use std::panic::resume_unwind;
-
-pub struct Clock {
-    pub m: usize,
-    pub t: usize,
-}
-
-pub struct Register  {
-    // The value of the register.
-    pub value: u16,
-
-    // A mask over the possible values in the register.
-    // Only used for the AF register where lower bits of
-    // F cannot be set.
-    pub mask: u16,
-}
-
-impl Register {
-    pub fn hi(&self) -> u8 {
-        return (self.value >> 8) as u8;
-    }
-    pub fn lo(&self) -> u8 {
-        return self.value as u8;
-    }
-    pub fn full(&self) -> u16 {
-        return self.value;
-    }
-
-    pub fn set_lo(&mut self, byte: u8) {
-        self.value = (byte as u16) | (self.value as u16) & 0xFF00;
-        self.update_mask()
-    }
-    pub fn set_hi(&mut self, byte: u8){
-        self.value = (byte as u16) << 8 | (self.value as u16) & 0xFF;
-        self.update_mask();
-    }
-    pub fn set_full(&mut self, word: u16) {
-        self.value = word;
-        self.update_mask()
-    }
-    pub fn update_mask(&mut self) {
-        if self.mask != 0 {
-            self.value &= self.mask
-        }
-    }
-
-    pub fn new() -> Register {
-        return Register {
-            value: 0,
-            mask: 0
-        }
-    }
-}
-
-pub struct Z80 {
-
-    pub af: Register,
-    pub bc: Register,
-    pub de: Register,
-    pub hl: Register,
-    pub pc: u16,
-    pub sp: Register,
-    pub divider: usize,
-
-    pub clock: Clock,
-    pub halt: u8,
-    pub stop: u8,
-}
+use crate::cpu::Z80;
 
 impl Z80 {
-
     pub fn print(&self) {
-        println!("regs: {} {} {} {}", self.af.full(), self.bc.full(), self.de.full(), self.hl.full());
+        println!(
+            "regs: {} {} {} {}",
+            self.af.full(),
+            self.bc.full(),
+            self.de.full(),
+            self.hl.full()
+        );
         println!("sp: {}", self.sp.full());
         println!("pc: {}", self.pc);
     }
@@ -148,11 +86,11 @@ impl Z80 {
         return (self.af.full() >> 4) & 1 == 1;
     }
 
-
-
     pub fn add(&mut self, reg: &str, high: bool, val1: u8, val2: u8, carry: bool) {
         let carry_bit = b(self.c() && carry) as u16;
-        let result = (val1 as u16).wrapping_add(val2 as u16).wrapping_add(carry_bit);
+        let result = (val1 as u16)
+            .wrapping_add(val2 as u16)
+            .wrapping_add(carry_bit);
         let result_u8 = result as u8;
         if high {
             self.set_hi(reg, result_u8);
@@ -161,13 +99,20 @@ impl Z80 {
         }
         self.set_z(result_u8 == 0);
         self.set_n(false);
-        self.set_h((val2 & 0xF).wrapping_add(val1 & 0xF).wrapping_add(carry_bit as u8) > 0xF);
+        self.set_h(
+            (val2 & 0xF)
+                .wrapping_add(val1 & 0xF)
+                .wrapping_add(carry_bit as u8)
+                > 0xF,
+        );
         self.set_c(result > 0xFF);
     }
 
-    pub fn sub(&mut self, reg: &str, high: bool, val1: u8, val2: u8, carry: bool){
+    pub fn sub(&mut self, reg: &str, high: bool, val1: u8, val2: u8, carry: bool) {
         let carry_bit = b(self.c() && carry) as i16;
-        let result = (val1 as i16).wrapping_sub(val2 as i16).wrapping_sub(carry_bit);
+        let result = (val1 as i16)
+            .wrapping_sub(val2 as i16)
+            .wrapping_sub(carry_bit);
         let result_u8 = result as u8;
         if high {
             self.set_hi(reg, result_u8);
@@ -176,7 +121,12 @@ impl Z80 {
         }
         self.set_z(result_u8 == 0);
         self.set_n(true);
-        self.set_h(((val1 & 0x0F) as i16).wrapping_sub((val2 & 0xF)as i16).wrapping_sub(carry_bit) < 0);
+        self.set_h(
+            ((val1 & 0x0F) as i16)
+                .wrapping_sub((val2 & 0xF) as i16)
+                .wrapping_sub(carry_bit)
+                < 0,
+        );
         self.set_c(result < 0);
     }
 
@@ -210,7 +160,7 @@ impl Z80 {
         match reg {
             "af" => {
                 self.af.set_hi(val);
-            },
+            }
             "bc" => {
                 self.bc.set_hi(val);
             }
@@ -228,7 +178,7 @@ impl Z80 {
         match reg {
             "af" => {
                 self.af.set_lo(val);
-            },
+            }
             "bc" => {
                 self.bc.set_lo(val);
             }
@@ -242,12 +192,11 @@ impl Z80 {
         }
     }
 
-
     pub fn set(&mut self, reg: &str, val: u16) {
         match reg {
             "af" => {
                 self.af.set_full(val);
-            },
+            }
             "bc" => {
                 self.bc.set_full(val);
             }
@@ -261,7 +210,7 @@ impl Z80 {
         }
     }
 
-    pub fn xor(&mut self, reg: &str, set_hi: bool,val1: u8, val2: u8) {
+    pub fn xor(&mut self, reg: &str, set_hi: bool, val1: u8, val2: u8) {
         let result = val1 ^ val2;
         if set_hi {
             self.set_hi(reg, result);
@@ -282,7 +231,7 @@ impl Z80 {
         self.set_c(val1 > val2);
     }
 
-    pub fn inc(&mut self,reg: &str, set_hi: bool, byte: u8){
+    pub fn inc(&mut self, reg: &str, set_hi: bool, byte: u8) {
         let result = byte.wrapping_add(1);
         if set_hi {
             self.set_hi(reg, result);
@@ -294,7 +243,7 @@ impl Z80 {
         self.set_h(half_carry_add(byte, 1));
     }
 
-    pub fn dec(&mut self,reg: &str, set_hi: bool, byte: u8) {
+    pub fn dec(&mut self, reg: &str, set_hi: bool, byte: u8) {
         let result = byte.wrapping_sub(1);
         if set_hi {
             self.set_hi(reg, result);
@@ -314,7 +263,7 @@ impl Z80 {
         self.set_c(result > 0xFFFF);
     }
 
-    pub fn add_16_signed(&mut self,reg: &str,  val1: u16, val2: i8)  {
+    pub fn add_16_signed(&mut self, reg: &str, val1: u16, val2: i8) {
         let result = (val1 as i32).wrapping_add(val2 as i32) as u16;
         self.set(reg, result);
         let tmp = val1 ^ (val2 as u16) ^ result;
@@ -335,23 +284,4 @@ impl Z80 {
     pub fn jump(&mut self, next: u16) {
         self.pc = next;
     }
-
-    pub fn new() -> Z80 {
-        return Z80 {
-            af: Register::new(),
-            bc: Register::new(),
-            de: Register::new(),
-            hl: Register::new(),
-            pc: 0,
-            sp: Register::new(),
-            divider: 0,
-            clock: Clock {
-                m: 0,
-                t: 0
-            },
-            halt: 0,
-            stop: 0
-        }
-    }
-
 }
