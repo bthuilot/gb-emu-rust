@@ -79,6 +79,7 @@ impl BankingController for MBC5 {
     }
 
     fn load_save_data(&mut self, data: Vec<u8>) {
-        self.ram = data
+        self.ram = data;
+        self.ram.resize(0x20000, 0)
     }
 }

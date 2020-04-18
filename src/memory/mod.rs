@@ -174,12 +174,10 @@ impl Gameboy {
     }
 
     pub fn dma_transfer(&mut self, val: u8) {
-        // TODO: This may need to be done instead of CPU ticks
         let address = (val as u16) << 8; // (data * 100)
 
         let mut i = 0_16;
         while i < 0xA0 {
-            // TODO: Check this doesn't prevent
             let val = self.read(address.wrapping_add(i));
             self.write(0xFE00_u16.wrapping_add(i), val);
             i = i.wrapping_add(1);

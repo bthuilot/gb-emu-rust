@@ -45,7 +45,6 @@ const CBOPCODE_CYCLES: [u8; 256] = [
 impl Gameboy {
     pub fn execute_next_opcode(&mut self) -> usize {
         let opcode = self.pop_pc();
-        self.cpu.print();
         self.cpu.clock.t = (OPCODE_CYCLES[opcode as usize] * 4) as usize;
         self.find_op(opcode);
         return self.cpu.clock.t;

@@ -129,7 +129,7 @@ impl Gameboy {
         let mut unsigned = false;
         let mut using_window = false;
         if test(lcd_control, 5) {
-            if window_y <= self.read(0xFF44) {
+            if window_y <= self.read_upper_ram(0xFF44) {
                 using_window = true;
             }
         }
@@ -165,8 +165,8 @@ impl Gameboy {
 
         let palette = self.read_upper_ram(0xFF47);
 
-        self.tile_scanline = [0; 160];
-        for pixel in 0_u8..160_u8 {
+        self.tile_scanline = [0; SCREEN_WIDTH as usize];
+        for pixel in 0_u8..SCREEN_WIDTH {
             let mut x_pos: u8 = if settings.using_window && (pixel) >= (window_x) {
                 (pixel).wrapping_sub(window_x )
             } else {
