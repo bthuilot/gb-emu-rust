@@ -128,6 +128,7 @@ impl Gameboy {
         let mut tile_data = 0x8800_u16;
         let mut unsigned = false;
         let mut using_window = false;
+
         if test(lcd_control, 5) {
             if window_y <= self.read_upper_ram(0xFF44) {
                 using_window = true;
@@ -266,7 +267,7 @@ impl Gameboy {
 
             let y_filp = test(attributes, 6);
             let x_flip = test(attributes, 5);
-            let priority = test(attributes, 7);
+            let priority = !test(attributes, 7);
 
 
             let bank = if self.cgb_mode && test(attributes, 3) {1_u16} else {0_u16};
