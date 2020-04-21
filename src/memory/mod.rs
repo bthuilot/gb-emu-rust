@@ -172,11 +172,9 @@ impl Gameboy {
     pub fn dma_transfer(&mut self, val: u8) {
         let address = (val as u16) << 8; // (data * 100)
 
-        let mut i = 0_16;
-        while i < 0xA0 {
+        for i in  0_u16..0xA0 {
             let val = self.read(address.wrapping_add(i));
             self.write(0xFE00_u16.wrapping_add(i), val);
-            i = i.wrapping_add(1);
         }
     }
 
