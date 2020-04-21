@@ -103,7 +103,7 @@ impl Gameboy {
         let sp = self.cpu.sp.full();
         let lo = self.read(sp) as u16;
         let hi = (self.read(sp.wrapping_add(1)) as u16) << 8;
-        self.cpu.sp.set_full(sp.wrapping_add(2));
+        self.cpu.sp.set_full(self.cpu.sp.full().wrapping_add(2));
         return lo | hi;
     }
 
@@ -111,7 +111,7 @@ impl Gameboy {
         let sp = self.cpu.sp.full();
         self.write(sp.wrapping_sub(1), ((addr & 0xFF00) >> 8) as u8);
         self.write(sp.wrapping_sub(2), (addr & 0xFF) as u8);
-        self.cpu.sp.set_full(sp.wrapping_sub(2));
+        self.cpu.sp.set_full(self.cpu.sp.full().wrapping_sub(2));
     }
 
     pub fn call(&mut self, next: u16) {
@@ -123,7 +123,6 @@ impl Gameboy {
         let opcode = self.pop_pc();
         self.cpu.clock.t = (OPCODE_CYCLES[opcode as usize] * 4) as usize;
         self.find_op(opcode);
-        println!("{}", opcode);
         return self.cpu.clock.t;
     }
 
