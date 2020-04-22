@@ -7,7 +7,6 @@ use crate::input::Input;
 
 pub const CLOCK_SPEED: usize = 4194304;
 pub const FRAMES_PER_SECOND: usize = 60;
-pub const CYCLES_FRAME: usize = CLOCK_SPEED / FRAMES_PER_SECOND;
 pub const DIV: u16 = 0xFF04;
 pub const TIMA: u16 = 0xFF05;
 pub const TMA: u16 = 0xFF06;

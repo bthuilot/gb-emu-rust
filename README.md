@@ -2,6 +2,12 @@
 
 A simple Gameboy and Gameboy Color emulator written in Rust with multi-platform support (Linux, Windows, macOS)
 
+# Screenshots
+
+![Pokemon Red](img/pokemon_red.png)
+
+![Pokemon Crystal](img/pokmon_crystal.png)
+
 ## TODO
 
 - [ ] Add Sound

@@ -24,7 +24,7 @@ fn main() -> () {
     let mut correct_file: bool = false;
     let mut file = String::new();
     while !correct_file {
-        let result = nfd::open_file_dialog(Some("gb, gbc"), None).unwrap_or_else(|e| {
+        let result = nfd::dialog().filter("gb").filter("gbc").open().unwrap_or_else(|e| {
             panic!(e);
         });
         match result {
@@ -52,7 +52,6 @@ fn main() -> () {
     let mut pixels =
         Pixels::new(SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32, surface_texture).expect("Unable to open screen");
     event_loop.run(move |event, _, control_flow| {
-        // The one and only event that winit_input_helper doesn't have for us...
         if let Event::RedrawRequested(_) = event {
             let frame = pixels.get_frame();
             for x in 0..gb.rendered_screen.len() {
@@ -84,6 +83,11 @@ fn main() -> () {
                 }
             }
 
+            // Change Palette
+            if input.key_pressed(VirtualKeyCode::P) {
+                gb.swap_palette();
+            }
+
             // Set speed up
             if input.key_pressed(VirtualKeyCode::Space) {
                 gb.toggle_speed(true);
@@ -109,8 +113,9 @@ fn main() -> () {
                 pixels.resize(size.width, size.height);
             }
 
-            // Update internal state and request a redraw
+            // Update Gameboy
             gb.update();
+            // Redraw the window
             window.request_redraw();
         }
     });

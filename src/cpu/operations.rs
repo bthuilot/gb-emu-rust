@@ -2,30 +2,16 @@ use crate::bit_functions::{b, half_carry_add, reset, set};
 use crate::cpu::Z80;
 
 impl Z80 {
-    fn print(&self) {
-        println!(
-            "regs: {} {} {} {}",
-            self.af.full(),
-            self.bc.full(),
-            self.de.full(),
-            self.hl.full()
-        );
-        println!("sp: {}", self.sp.full());
-        println!("pc: {}", self.pc);
-    }
 
     pub fn init(&mut self, cgb: bool) {
-        self.pc = 0x100;
-        if cgb {
-            self.af.set_full(0x1180);
-        } else {
-            self.af.set_full(0x01B0);
-        }
+        self.af.set_full(if cgb {0x1180} else {0x1B0});
+        self.af.mask = 0xFFF0;
         self.bc.set_full(0x0000);
         self.de.set_full(0xFF56);
         self.hl.set_full(0x000D);
+
+        self.pc = 0x100;
         self.sp.set_full(0xFFFE);
-        self.af.mask = 0xFFF0;
     }
 
     pub fn set_flag(&mut self, index: u8, on: bool) {

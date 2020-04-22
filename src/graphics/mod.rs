@@ -1,3 +1,5 @@
+use crate::gameboy::Gameboy;
+
 mod palette;
 mod rendering;
 
@@ -31,4 +33,10 @@ pub struct CGBPalette {
     palette: [u8; 0x40],
     pub index: u8,
     pub inc: bool,
+}
+
+impl Gameboy {
+    pub fn swap_palette(&mut self) {
+        self.current_palette = (self.current_palette + 1) % 3;
+    }
 }
