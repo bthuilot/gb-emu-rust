@@ -22,6 +22,7 @@ pub struct Timer {
 pub struct Speed {
     pub current: u8,
     pub prepare: bool,
+    pub cycle_frames: usize,
 }
 
 impl Timer {
@@ -96,6 +97,7 @@ impl MMU {
             speed: Speed {
                 current: 0,
                 prepare: false,
+                cycle_frames: CLOCK_SPEED / FRAMES_PER_SECOND,
             },
             ram: [0; 0x100],
             vram: [0; 0x4000],

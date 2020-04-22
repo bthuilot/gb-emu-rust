@@ -1,6 +1,12 @@
 use crate::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use winit::dpi::{LogicalPosition, LogicalSize, PhysicalSize};
 use winit::event_loop::EventLoop;
+use std::collections::HashMap;
+use winit::event::VirtualKeyCode;
+use winit::monitor::VideoMode;
+use crate::input::{LEFT, START, SELECT, B, A, DOWN, UP, RIGHT, Button};
+use std::io::SeekFrom::Start;
+use soundio::ChannelId::RightLfe;
 
 // Sample code from pixels examples
 pub(crate) fn create_window(
@@ -48,4 +54,17 @@ pub(crate) fn create_window(
         size.height.round() as u32,
         hidpi_factor,
     )
+}
+
+pub fn get_keymap() -> HashMap<VirtualKeyCode, Button> {
+    let mut map: HashMap<VirtualKeyCode, Button> = HashMap::new();
+    map.insert(VirtualKeyCode::Left, LEFT);
+    map.insert(VirtualKeyCode::Right, RIGHT);
+    map.insert(VirtualKeyCode::Up, UP);
+    map.insert(VirtualKeyCode::Down, DOWN);
+    map.insert(VirtualKeyCode::Z, A);
+    map.insert(VirtualKeyCode::X, B);
+    map.insert(VirtualKeyCode::Escape, SELECT);
+    map.insert(VirtualKeyCode::Return, START);
+    return map;
 }

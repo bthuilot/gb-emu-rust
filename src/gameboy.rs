@@ -1,7 +1,7 @@
 use crate::bit_functions::{reset, set, test};
 use crate::cpu::{Z80};
 use crate::graphics::{ColorPixel, SCREEN_HEIGHT, SCREEN_WIDTH};
-use crate::memory::{DIV, MMU, TIMA, TMA, CYCLES_FRAME};
+use crate::memory::{DIV, MMU, TIMA, TMA, FRAMES_PER_SECOND, CLOCK_SPEED};
 use crate::graphics::{CGBPalette, PALETTE_BGB};
 
 pub struct Gameboy {
@@ -36,12 +36,10 @@ impl Gameboy {
         }
 
         let mut cycles = 0;
-        while cycles < CYCLES_FRAME * (self.memory.speed.current as usize + 1) {
+        while cycles < self.memory.speed.cycle_frames * (self.memory.speed.current as usize + 1) {
             let mut cycles_op = 4;
             if !self.halted {
                 cycles_op = self.execute_next_opcode();
-            } else {
-                // TODO: Something here
             }
             cycles += cycles_op;
             self.update_graphics(cycles_op as isize);
@@ -77,6 +75,11 @@ impl Gameboy {
             2 => 64,
             _ => 256,
         };
+    }
+
+    pub fn toggle_speed(&mut self, on: bool) {
+        let frames = if on {4 * CLOCK_SPEED / FRAMES_PER_SECOND} else {CLOCK_SPEED / FRAMES_PER_SECOND};
+        self.memory.speed.cycle_frames = frames;
     }
 
     pub fn divider_register(&mut self, cycles: usize) {

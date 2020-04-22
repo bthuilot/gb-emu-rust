@@ -9,8 +9,8 @@ mod pixels_helper;
 
 extern crate nfd;
 use crate::gameboy::Gameboy;
-use crate::pixels_helper::create_window;
-use crate::input::{A, B, DOWN, LEFT, RIGHT, SELECT, START, UP};
+use crate::pixels_helper::{create_window, get_keymap};
+use crate::input::Button;
 use crate::graphics::{SCREEN_WIDTH, SCREEN_HEIGHT};
 use pixels::{Pixels, SurfaceTexture};
 use winit::event::{Event, VirtualKeyCode};
@@ -18,6 +18,7 @@ use winit::event_loop::{ControlFlow, EventLoop};
 use winit_input_helper::WinitInputHelper;
 use nfd::Response;
 use std::process::exit;
+use std::collections::HashMap;
 
 fn main() -> () {
     let mut correct_file: bool = false;
@@ -72,71 +73,30 @@ fn main() -> () {
         }
         // Handle input events
         if input.update(event) {
-            if input.key_pressed(VirtualKeyCode::Up) {
-                gb.press_button(UP);
+            // Set key bindings
+            let keymap: HashMap<VirtualKeyCode, Button> = get_keymap();
+            for (keycode, button) in keymap.iter() {
+                if input.key_pressed(*keycode) {
+                    gb.press_button(*button);
+                }
+                if input.key_released(*keycode) {
+                    gb.release_button(*button);
+                }
             }
 
-            if input.key_released(VirtualKeyCode::Up) {
-                gb.release_button(UP);
+            // Set speed up
+            if input.key_pressed(VirtualKeyCode::Space) {
+                gb.toggle_speed(true);
             }
 
-            if input.key_pressed(VirtualKeyCode::Down) {
-                gb.press_button(DOWN);
+            if input.key_released(VirtualKeyCode::Space) {
+                gb.toggle_speed(false);
             }
 
-            if input.key_released(VirtualKeyCode::Down) {
-                gb.release_button(DOWN);
-            }
-            if input.key_pressed(VirtualKeyCode::Left) {
-                gb.press_button(LEFT);
-            }
-
-            if input.key_released(VirtualKeyCode::Left) {
-                gb.release_button(LEFT);
-            }
-            if input.key_pressed(VirtualKeyCode::Right) {
-                gb.press_button(RIGHT);
-            }
-
-            if input.key_released(VirtualKeyCode::Right) {
-                gb.release_button(RIGHT);
-            }
-
-            if input.key_pressed(VirtualKeyCode::Escape) {
-                gb.press_button(START)
-            }
-            if input.key_released(VirtualKeyCode::Escape) {
-                gb.release_button(START)
-            }
-
-            if input.key_pressed(VirtualKeyCode::Tab) {
-                gb.press_button(SELECT)
-            }
-            if input.key_released(VirtualKeyCode::Tab) {
-                gb.release_button(SELECT)
-            }
-
-            if input.key_pressed(VirtualKeyCode::Z) {
-                gb.press_button(A)
-            }
-            if input.key_released(VirtualKeyCode::Z) {
-                gb.release_button(A)
-            }
-
-            if input.key_pressed(VirtualKeyCode::X) {
-                gb.press_button(B)
-            }
-            if input.key_released(VirtualKeyCode::X) {
-                gb.release_button(B)
-            }
             // Close events
             if input.quit() {
                 *control_flow = ControlFlow::Exit;
                 return;
-            }
-
-            if input.key_pressed(VirtualKeyCode::Up) {
-                gb.press_button(UP);
             }
 
             // Adjust high DPI factor
