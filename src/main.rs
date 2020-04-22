@@ -73,7 +73,6 @@ fn main() -> () {
         // Handle input events
         if input.update(event) {
             if input.key_pressed(VirtualKeyCode::Up) {
-                println!("Up");
                 gb.press_button(UP);
             }
 
@@ -106,28 +105,28 @@ fn main() -> () {
             if input.key_pressed(VirtualKeyCode::Escape) {
                 gb.press_button(START)
             }
-            if input.key_pressed(VirtualKeyCode::Escape) {
+            if input.key_released(VirtualKeyCode::Escape) {
                 gb.release_button(START)
             }
 
             if input.key_pressed(VirtualKeyCode::Tab) {
                 gb.press_button(SELECT)
             }
-            if input.key_pressed(VirtualKeyCode::Tab) {
+            if input.key_released(VirtualKeyCode::Tab) {
                 gb.release_button(SELECT)
             }
 
             if input.key_pressed(VirtualKeyCode::Z) {
                 gb.press_button(A)
             }
-            if input.key_pressed(VirtualKeyCode::Z) {
+            if input.key_released(VirtualKeyCode::Z) {
                 gb.release_button(A)
             }
 
             if input.key_pressed(VirtualKeyCode::X) {
                 gb.press_button(B)
             }
-            if input.key_pressed(VirtualKeyCode::X) {
+            if input.key_released(VirtualKeyCode::X) {
                 gb.release_button(B)
             }
             // Close events

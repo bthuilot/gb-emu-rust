@@ -14,9 +14,7 @@ impl Gameboy {
                 // TODO: Write Wave Form
             }
             0xFF02 => {
-                print!("{}", value as char)
                 // TODO: Serial transfer control
-                // Not too sure what this is
             }
             DIV => {
                 self.memory.timer.reset_timer();
