@@ -1,8 +1,6 @@
-extern crate soundio;
-use soundio::Context;
-use std::process::exit;
-use self::soundio::InStream;
-
+extern crate cpal;
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use std::intrinsics::ceilf64;
 
 const SAMPLE_RATE: usize = 44100;
 const SAMPLE_PERIOD: f64 = 1_f64 / (SAMPLE_RATE as f64);
@@ -17,8 +15,6 @@ struct SoundCard {
 
     left_volume: f64,
     right_volume: f64,
-
-    input_stream: InStream,
 
     // TODO: Waveform
     waveform: [u8; 0x20]
@@ -48,44 +44,27 @@ impl SoundCard {
                 self.memory[index] = 0xFF
             }
         }
-
-        let mut ctx = soundio::Context::new();
-        ctx.set_app_name("Gameboy Emulator");
-        let result = ctx.connect();
-        if result.is_err() {
-            println!("Unable to open channel");
-            exit(1);
-        }
-
-        let dev = ctx.default_input_device().expect("No input device");
-
-        self.input_stream = dev.open_instream(
-            SAMPLE_RATE as i32,
-            soundio::Format::Float64BE,
-            soundio::ChannelLayout::get_builtin(soundio::ChannelLayoutId::Stereo),
-            2.0,
-            read_callback,
-            None::<fn()>,
-            None::<fn(soundio::Error)>,
+        let host = cpal::default_host();
+        let device = host
+            .default_output_device()
+            .expect("failed to find a default output device");
+        let config = device.default_output_config()?;
+        let stream = device.build_output_stream(
+            config,
+            move |data: &mut [T]| write_data(data, 4, &mut self.calculate_next_value),
+            err_fn,
         )?;
+        stream.play()?;
+
+        std::thread::sleep(std::time::Duration::from_millis(1000));
     }
+    fn calculate_next_value(&mut self) {
+        let samples: isize = 0;
 
-    fn read_callback(stream: &mut soundio::InStreamReader) {
-        let frame_count_max = stream.frame_count_max();
-        if let Err(e) = stream.begin_read(frame_count_max) {
-            println!("Error reading from stream: {}", e);
-            return;
-        }
 
-        for f in 0..stream.frame_count() {
-            for c in 0..stream.channel_count() {
-                do_something_with(stream.sample::<i16>(c, f));
-            }
-        }
     }
-
-
 }
+
 
 trait WaveGenerator {
     fn generate(t: f64) -> u8;
