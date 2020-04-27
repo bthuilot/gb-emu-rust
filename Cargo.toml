@@ -12,3 +12,7 @@ winit = "0.22.0"
 winit_input_helper = "0.6.0"
 nfd = "0.0.4"
 soundio = "0.2.1"
+
+# Dependencies for testing
+[dev-dependencies]
+mockall = "0.7.0"

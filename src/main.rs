@@ -6,6 +6,7 @@ mod input;
 mod graphics;
 mod memory;
 mod pixels_helper;
+mod tests;
 
 extern crate nfd;
 use crate::gameboy::Gameboy;

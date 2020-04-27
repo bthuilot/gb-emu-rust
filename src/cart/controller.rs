@@ -18,6 +18,7 @@ pub struct Cart {
     pub mode: u8,
 }
 
+#[automock]
 impl Cart {
     pub fn read(&self, address: u16) -> u8 {
         return self.banking_controller.read(address);

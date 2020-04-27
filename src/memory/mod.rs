@@ -4,6 +4,7 @@ use crate::bit_functions::{test, val};
 use crate::cart::controller::{Cart, CBG_MODE};
 use crate::gameboy::Gameboy;
 use crate::input::Input;
+use mockall::automock;
 
 pub const CLOCK_SPEED: usize = 4194304;
 pub const FRAMES_PER_SECOND: usize = 60;
@@ -30,6 +31,7 @@ impl Timer {
     }
 }
 
+#[automock]
 pub struct MMU {
     pub cart: Cart,
     pub timer: Timer,
