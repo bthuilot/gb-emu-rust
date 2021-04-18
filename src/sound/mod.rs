@@ -35,6 +35,7 @@ impl SoundCard {
             c_4: Channel::new(),
             left_volume: 0.0,
             right_volume: 0.0,
+            input_stream: InStream{ userdata: Box::new(InStreamUserData {}), phantom: Default::default() },
             waveform: [0; 0x20],
         };
 

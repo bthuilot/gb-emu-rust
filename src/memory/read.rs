@@ -30,11 +30,12 @@ impl Gameboy {
                     + (self.memory.wram_bank as u16).wrapping_mul(0x1000))
                     as usize]
             }
-            // Working RAM shadow, I/O, Zero-page RAM
+            // Mirror of C000~~DDFF (Echo RAM)
+            // Nintendo prohibits use of this area
             0xE000..=0xFDFF => {
-                // TODO: re-enable echo RAM?
                 0xFF
             }
+            // Sprite attribute table (OAM)
             0xFE00..=0xFE9F => {
                 self.memory.oam[(addr - 0xFE00) as usize]
             }
