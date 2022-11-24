@@ -1,5 +1,7 @@
 # Gameboy Emulator
 
+![GitHub](https://img.shields.io/github/license/bthuilot/gb-emu-rust)
+
 A simple Gameboy and Gameboy Color emulator written in Rust with multi-platform support (Linux, Windows, macOS)
 
 # Screenshots
